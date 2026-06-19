@@ -454,11 +454,15 @@ a:hover { color: var(--blue-dark); border-bottom-color: var(--blue-dark); }
   transition: border-color 0.18s var(--ease), transform 0.18s var(--ease),
               box-shadow 0.18s var(--ease), background 0.18s var(--ease);
 }
-.card:hover {
-  border-color: var(--green);
-  background: var(--bg-card-hi);
-  transform: translateY(-3px);
-  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.4);
+/* Hover only on real pointers — avoids the sticky green highlight that
+   lingers on touch devices after a tap (the card is reused for the next pair). */
+@media (hover: hover) {
+  .card:hover {
+    border-color: var(--green);
+    background: var(--bg-card-hi);
+    transform: translateY(-3px);
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.4);
+  }
 }
 .card:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 3px; }
 
@@ -516,10 +520,12 @@ a:hover { color: var(--blue-dark); border-bottom-color: var(--blue-dark); }
   cursor: pointer;
   transition: background 0.15s var(--ease), color 0.15s var(--ease);
 }
-.card:hover .pick-btn { color: var(--text); }
-.pick-btn:hover {
-  background: var(--green);
-  color: #0a1f12;
+@media (hover: hover) {
+  .card:hover .pick-btn { color: var(--text); }
+  .pick-btn:hover {
+    background: var(--green);
+    color: #0a1f12;
+  }
 }
 
 .vs-divider {
