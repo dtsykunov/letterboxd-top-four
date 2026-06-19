@@ -401,6 +401,255 @@ class TournamentEngine {
 }
 
 // ============================================================
+// Share helpers — pure, module-level, exported for tests
+// ============================================================
+
+// LEB128 (unsigned) varint encode into a growing byte array
+function varintWrite(arr, n) {
+  n = n >>> 0; // treat as unsigned 32-bit
+  do {
+    let byte = n & 0x7f;
+    n >>>= 7;
+    if (n !== 0) byte |= 0x80;
+    arr.push(byte);
+  } while (n !== 0);
+}
+
+// LEB128 (unsigned) varint read from Uint8Array at offset pos
+// Returns { value, pos } where pos is updated past the varint
+function varintRead(bytes, pos) {
+  let result = 0, shift = 0;
+  while (pos < bytes.length) {
+    const byte = bytes[pos++];
+    result |= (byte & 0x7f) << shift;
+    shift += 7;
+    if ((byte & 0x80) === 0) break;
+  }
+  return { value: result >>> 0, pos };
+}
+
+// payload object shape:
+//   { v: 1, nick: string, f: [{name, code, year}], t: [idx0,idx1,idx2,idx3], l: [{w, l}] }
+// where code = uri.slice('https://boxd.it/'.length) for boxd.it links, else full uri
+
+function buildSharePayload(state, nickname) {
+  const nick = (nickname || '').trim();
+  const f = (state.films || []).map(film => {
+    const uri = film.uri || '';
+    const code = uri.startsWith('https://boxd.it/')
+      ? uri.slice('https://boxd.it/'.length)
+      : uri;
+    const yearInt = parseInt(film.year, 10);
+    return {
+      name: film.name || '',
+      code,
+      year: isNaN(yearInt) ? 0 : yearInt,
+    };
+  });
+  const t = (state.ranked || []).slice(0, 4).map(Number);
+  const matches = (state.log || []).filter(e => e.kind === 'match');
+  const l = matches.map(e => ({ w: Number(e.winner), l: Number(e.loser) }));
+  return { v: 1, nick, f, t, l };
+}
+
+function payloadToState(payload) {
+  const films = (payload.f || []).map(fi => {
+    const code = fi.code || '';
+    const uri = code.indexOf('://') !== -1 ? code : 'https://boxd.it/' + code;
+    return {
+      name: fi.name,
+      year: fi.year > 0 ? String(fi.year) : '',
+      uri,
+    };
+  });
+  const log = (payload.l || []).map(e => ({
+    kind: 'match',
+    winner: e.w,
+    loser: e.l,
+  }));
+  const beatenBy = {};
+  for (let i = 0; i < films.length; i++) beatenBy[i] = [];
+  return {
+    films,
+    beatenBy,
+    ranked: (payload.t || []).map(Number),
+    log,
+    phase: 'done',
+    round: [],
+    nextRound: [],
+    current: null,
+    comparisonCount: log.length,
+    roundNum: 1,
+    phaseSize: 0,
+  };
+}
+
+function serializePayload(payload) {
+  const enc = new TextEncoder();
+  const filmCount = (payload.f || []).length;
+  const idxWidth = filmCount <= 256 ? 1 : 2;
+
+  const arr = [];
+
+  // header
+  arr.push(1);        // version
+  arr.push(idxWidth); // index width
+
+  // nickname
+  const nickBytes = enc.encode(payload.nick || '');
+  varintWrite(arr, nickBytes.length);
+  for (let i = 0; i < nickBytes.length; i++) arr.push(nickBytes[i]);
+
+  // filmCount
+  varintWrite(arr, filmCount);
+
+  // films
+  for (const fi of (payload.f || [])) {
+    const nameBytes = enc.encode(fi.name || '');
+    const codeBytes = enc.encode(fi.code || '');
+    varintWrite(arr, nameBytes.length);
+    for (let i = 0; i < nameBytes.length; i++) arr.push(nameBytes[i]);
+    varintWrite(arr, codeBytes.length);
+    for (let i = 0; i < codeBytes.length; i++) arr.push(codeBytes[i]);
+    varintWrite(arr, fi.year > 0 ? fi.year : 0);
+  }
+
+  // top-4 indices (idxWidth bytes each, little-endian)
+  const t = payload.t || [];
+  for (let k = 0; k < 4; k++) {
+    const idx = t[k] !== undefined ? t[k] : 0;
+    arr.push(idx & 0xff);
+    if (idxWidth === 2) arr.push((idx >> 8) & 0xff);
+  }
+
+  // matches
+  const l = payload.l || [];
+  varintWrite(arr, l.length);
+  for (const e of l) {
+    arr.push(e.w & 0xff);
+    if (idxWidth === 2) arr.push((e.w >> 8) & 0xff);
+    arr.push(e.l & 0xff);
+    if (idxWidth === 2) arr.push((e.l >> 8) & 0xff);
+  }
+
+  return new Uint8Array(arr);
+}
+
+function deserializePayload(bytes) {
+  const dec = new TextDecoder();
+  let pos = 0;
+
+  const version = bytes[pos++];
+  if (version !== 1) throw new Error('Unsupported payload version: ' + version);
+  const idxWidth = bytes[pos++];
+
+  // nickname
+  let r = varintRead(bytes, pos); pos = r.pos;
+  const nickLen = r.value;
+  const nick = dec.decode(bytes.slice(pos, pos + nickLen)); pos += nickLen;
+
+  // filmCount
+  r = varintRead(bytes, pos); pos = r.pos;
+  const filmCount = r.value;
+
+  const f = [];
+  for (let i = 0; i < filmCount; i++) {
+    r = varintRead(bytes, pos); pos = r.pos;
+    const nameLen = r.value;
+    const name = dec.decode(bytes.slice(pos, pos + nameLen)); pos += nameLen;
+
+    r = varintRead(bytes, pos); pos = r.pos;
+    const codeLen = r.value;
+    const code = dec.decode(bytes.slice(pos, pos + codeLen)); pos += codeLen;
+
+    r = varintRead(bytes, pos); pos = r.pos;
+    const year = r.value;
+
+    f.push({ name, code, year });
+  }
+
+  // top-4 indices
+  const t = [];
+  for (let k = 0; k < 4; k++) {
+    let idx = bytes[pos++];
+    if (idxWidth === 2) idx |= bytes[pos++] << 8;
+    t.push(idx);
+  }
+
+  // matches
+  r = varintRead(bytes, pos); pos = r.pos;
+  const matchCount = r.value;
+  const l = [];
+  for (let i = 0; i < matchCount; i++) {
+    let w = bytes[pos++];
+    if (idxWidth === 2) w |= bytes[pos++] << 8;
+    let lv = bytes[pos++];
+    if (idxWidth === 2) lv |= bytes[pos++] << 8;
+    l.push({ w, l: lv });
+  }
+
+  return { v: 1, nick, f, t, l };
+}
+
+// base64url (no padding; + / → - _)
+function b64urlFromBytes(bytes) {
+  // chunked to avoid call stack overflow for large arrays
+  const CHUNK = 0x8000;
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+
+function bytesFromB64url(str) {
+  const b64 = str.replace(/-/g, '+').replace(/_/g, '/');
+  const binary = atob(b64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
+async function encodeShare(payload) {
+  const raw = serializePayload(payload);
+  let finalBytes;
+  if (typeof CompressionStream !== 'undefined') {
+    const blob = new Blob([raw]);
+    const cs = new CompressionStream('deflate-raw');
+    const stream = blob.stream().pipeThrough(cs);
+    const compressed = await new Response(stream).arrayBuffer();
+    const cBytes = new Uint8Array(compressed);
+    finalBytes = new Uint8Array(1 + cBytes.length);
+    finalBytes[0] = 0x44; // 'D'
+    finalBytes.set(cBytes, 1);
+  } else {
+    finalBytes = new Uint8Array(1 + raw.length);
+    finalBytes[0] = 0x52; // 'R'
+    finalBytes.set(raw, 1);
+  }
+  return b64urlFromBytes(finalBytes);
+}
+
+async function decodeShare(str) {
+  const bytes = bytesFromB64url(str);
+  const method = bytes[0];
+  const body = bytes.slice(1);
+  let raw;
+  if (method === 0x44) { // 'D' — deflate-raw
+    const blob = new Blob([body]);
+    const ds = new DecompressionStream('deflate-raw');
+    const stream = blob.stream().pipeThrough(ds);
+    const buf = await new Response(stream).arrayBuffer();
+    raw = new Uint8Array(buf);
+  } else if (method === 0x52) { // 'R' — raw
+    raw = body;
+  } else {
+    throw new Error('Unknown compression method: ' + method);
+  }
+  return deserializePayload(raw);
+}
+
+// ============================================================
 // localStorage persistence
 // ============================================================
 
@@ -1027,20 +1276,183 @@ if (typeof window !== 'undefined') {
     document.getElementById('btn-restart-results').addEventListener('click', startOver);
     document.getElementById('btn-different-file').addEventListener('click', useDifferentFile);
 
-    // --- Resume saved session ---
-    const saved = loadSavedState();
-    if (saved && saved.films && saved.engineState) {
-      currentFilms = saved.films;
-      engine = TournamentEngine.fromState(saved.engineState);
-      loadUndo();
-      if (engine.isComplete()) {
-        showResults();
-      } else {
-        showMatchup();
+    // --- Share panel wiring ---
+    const elShareToggle = document.getElementById('btn-share-toggle');
+    const elSharePanel  = document.getElementById('share-panel');
+    const elShareNick   = document.getElementById('share-nickname');
+    const elCopyBtn     = document.getElementById('btn-copy-link');
+    const elShareWarn   = document.getElementById('share-length-warning');
+
+    elShareToggle.addEventListener('click', () => {
+      const expanded = elSharePanel.hidden === false;
+      elSharePanel.hidden = expanded;
+      elShareToggle.setAttribute('aria-expanded', String(!expanded));
+    });
+
+    elCopyBtn.addEventListener('click', async () => {
+      if (!engine || !engine.isComplete()) return;
+      const nick = elShareNick.value.trim();
+      const payload = buildSharePayload(engine.state, nick);
+      const b64 = await encodeShare(payload);
+      const link = location.origin + location.pathname + '#r=' + b64;
+
+      // Length warning
+      elShareWarn.hidden = link.length <= 8000;
+
+      // Copy to clipboard
+      async function doCopy() {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(link);
+        } else {
+          // Fallback: offscreen textarea
+          const ta = document.createElement('textarea');
+          ta.value = link;
+          ta.style.position = 'fixed';
+          ta.style.top = '-9999px';
+          ta.style.left = '-9999px';
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+        }
       }
-    } else {
-      showScreen('intro');
+
+      try {
+        await doCopy();
+        const orig = elCopyBtn.textContent;
+        elCopyBtn.textContent = 'Copied!';
+        elCopyBtn.classList.add('copied');
+        setTimeout(() => {
+          elCopyBtn.textContent = orig;
+          elCopyBtn.classList.remove('copied');
+        }, 1500);
+      } catch (_) {
+        // If copy fails, silently ignore
+      }
+    });
+
+    // --- Shared view renderer ---
+    function renderSharedView(payload) {
+      const sharedEngine = TournamentEngine.fromState(payloadToState(payload));
+      const ranking = sharedEngine.getRanking();
+
+      // Title
+      const elTitle = document.getElementById('shared-heading');
+      elTitle.textContent = payload.nick
+        ? payload.nick + '’s Top Four'
+        : 'A Letterboxd Top Four';
+
+      // Top-4 list
+      const elSharedList = document.getElementById('shared-results-list');
+      while (elSharedList.firstChild) elSharedList.removeChild(elSharedList.firstChild);
+      ranking.forEach((film, i) => {
+        const li = document.createElement('li');
+
+        const rankSpan = document.createElement('span');
+        rankSpan.className = 'rank-number';
+        rankSpan.textContent = '#' + (i + 1);
+
+        const titleSpan = document.createElement('span');
+        titleSpan.className = 'rank-title';
+        titleSpan.textContent = film.name;
+
+        const yearSpan = document.createElement('span');
+        yearSpan.className = 'rank-year';
+        yearSpan.textContent = film.year ? '(' + film.year + ')' : '';
+
+        const link = document.createElement('a');
+        link.className = 'letterboxd-link';
+        link.href = safeHref(film.uri);
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = 'Letterboxd ↗';
+
+        li.appendChild(rankSpan);
+        li.appendChild(document.createTextNode(' '));
+        li.appendChild(titleSpan);
+        li.appendChild(document.createTextNode(' '));
+        li.appendChild(yearSpan);
+        li.appendChild(document.createTextNode(' '));
+        li.appendChild(link);
+        elSharedList.appendChild(li);
+      });
+
+      // Decisions count
+      const elDecisionsCount = document.getElementById('decisions-count');
+      elDecisionsCount.textContent = String(payload.l.length);
+
+      // Decisions list — REVERSE chronological (latest/most decisive first)
+      const elDecisionsList = document.getElementById('decisions-list');
+      while (elDecisionsList.firstChild) elDecisionsList.removeChild(elDecisionsList.firstChild);
+
+      const films = payloadToState(payload).films;
+      const matches = payload.l.slice().reverse(); // copy and reverse
+      matches.forEach(e => {
+        const winnerName = films[e.w] ? films[e.w].name : '?';
+        const loserName  = films[e.l] ? films[e.l].name : '?';
+
+        const li = document.createElement('li');
+        li.className = 'decision-row';
+
+        const chose = document.createElement('span');
+        chose.className = 'decision-chose';
+        chose.textContent = 'Chose ';
+
+        const winner = document.createElement('strong');
+        winner.className = 'decision-winner';
+        winner.textContent = winnerName;
+
+        const over = document.createElement('span');
+        over.className = 'decision-over';
+        over.textContent = ' over ';
+
+        const loser = document.createElement('span');
+        loser.className = 'decision-loser';
+        loser.textContent = loserName;
+
+        li.appendChild(chose);
+        li.appendChild(winner);
+        li.appendChild(over);
+        li.appendChild(loser);
+        elDecisionsList.appendChild(li);
+      });
+
+      // CTA button
+      document.getElementById('btn-make-own').addEventListener('click', () => {
+        history.replaceState(null, '', location.pathname);
+        showScreen('intro');
+      });
+
+      showScreen('shared');
     }
+
+    // --- Hash check / resume (async IIFE, placed last in init) ---
+    (async function initHashOrResume() {
+      const hash = location.hash;
+      if (/^#r=/.test(hash)) {
+        try {
+          const payload = await decodeShare(hash.slice(3));
+          renderSharedView(payload);
+          return; // DO NOT touch localStorage — viewer's own saved game is untouched
+        } catch (_) {
+          // Invalid/corrupt hash — fall through to normal flow
+        }
+      }
+      // Normal resume path
+      const saved = loadSavedState();
+      if (saved && saved.films && saved.engineState) {
+        currentFilms = saved.films;
+        engine = TournamentEngine.fromState(saved.engineState);
+        loadUndo();
+        if (engine.isComplete()) {
+          showResults();
+        } else {
+          showMatchup();
+        }
+      } else {
+        showScreen('intro');
+      }
+    })();
   }
 
   if (document.readyState === 'loading') {
@@ -1055,5 +1467,12 @@ if (typeof window !== 'undefined') {
 // ============================================================
 
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { parseCSVLine, parseCSV, TournamentEngine };
+  module.exports = {
+    parseCSVLine, parseCSV, TournamentEngine,
+    varintWrite, varintRead,
+    buildSharePayload, payloadToState,
+    serializePayload, deserializePayload,
+    b64urlFromBytes, bytesFromB64url,
+    encodeShare, decodeShare,
+  };
 }

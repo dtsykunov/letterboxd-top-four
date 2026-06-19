@@ -839,3 +839,39 @@ kbd {
   text-align: center;
   background: var(--bg-surface);
 }
+
+/* ============================================================
+   Share panel (results screen)
+   ============================================================ */
+.share-strip { margin: 0 auto; text-align: center; padding-top: 0.25rem; }
+.share-toggle-btn { font-size: 0.82rem; }
+.share-panel[hidden] { display: none; }
+.share-panel { max-width: 34rem; margin: 1.25rem auto 0; animation: screen-in 0.3s var(--ease) both; }
+.share-panel-inner { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.4rem 1.5rem 1.5rem; display: flex; flex-direction: column; gap: 0.9rem; }
+.share-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.2em; color: var(--text-dim); display: block; margin-bottom: -0.4rem; text-align: left; }
+.share-input { width: 100%; background: var(--bg-card); border: 1.5px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-family: inherit; font-size: 0.95rem; font-weight: 500; padding: 0.65rem 0.9rem; outline: none; transition: border-color 0.15s var(--ease); }
+.share-input::placeholder { color: var(--text-dim); }
+.share-input:focus { border-color: var(--green); }
+.share-copy-btn { width: 100%; font-family: inherit; font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.12em; padding: 0.8rem 1rem; background: var(--green); color: #0a1f12; border: none; border-radius: 999px; cursor: pointer; transition: background 0.15s var(--ease); }
+.share-copy-btn:hover { background: #16ef67; }
+.share-copy-btn.copied { background: var(--green); }
+.share-warning { font-size: 0.78rem; color: var(--orange); margin: 0; line-height: 1.5; padding: 0.6rem 0.8rem; background: rgba(255,128,0,0.07); border: 1px solid rgba(255,128,0,0.25); border-radius: var(--radius-sm); }
+.share-warning[hidden] { display: none; }
+
+/* ============================================================
+   Shared view screen (read-only)
+   ============================================================ */
+.shared-view { max-width: 42rem; }
+.shared-title { font-size: clamp(2rem, 5vw, 3rem); font-weight: 800; letter-spacing: -0.03em; margin: 0 auto 2.25rem; max-width: 30rem; color: var(--text); }
+.shared-results-list { margin-bottom: 3rem; }
+.decisions-block { max-width: 34rem; margin: 0 auto 3rem; text-align: left; border-top: 1px solid var(--border); padding-top: 1.75rem; }
+.decisions-heading { display: flex; align-items: baseline; gap: 0.6rem; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.22em; color: var(--text-dim); margin: 0 0 1.1rem; }
+.decisions-count { font-size: 0.7rem; font-weight: 700; color: var(--text-dim); border: 1px solid var(--border); border-radius: 999px; padding: 0.1rem 0.55rem; letter-spacing: 0.04em; }
+.decisions-list { list-style: none; padding: 0; margin: 0; }
+.decision-row { font-size: 0.92rem; line-height: 1.5; padding: 0.6rem 0; border-bottom: 1px solid var(--border); color: var(--text-muted); }
+.decision-row:last-child { border-bottom: none; }
+.decision-chose, .decision-over { color: var(--text-dim); }
+.decision-winner { font-weight: 700; color: var(--text); }
+.decision-loser { color: var(--text-dim); text-decoration: line-through; text-decoration-color: var(--text-dim); text-decoration-thickness: 1px; }
+.shared-cta { text-align: center; padding-top: 0.5rem; }
+.shared-cta-note { font-size: 0.78rem; color: var(--text-dim); margin: 0.85rem 0 0; }

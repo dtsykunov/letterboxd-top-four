@@ -52,6 +52,20 @@ shows the rounds as columns: decided matchups with their winners, the live match
 not-yet-played matchups as "to come" counts. Because winners are re-paired at random each
 round, upcoming pairings genuinely don't exist yet — the graph never spoils what's next.
 
+## Sharing your result
+
+After finishing, click **Share result** on the results screen to open the share panel. Optionally enter your name, then click **Copy share link**. The link is copied to your clipboard.
+
+**Privacy:** the entire result (your films, decisions, and nickname) is encoded directly into the URL `#hash` fragment. The hash is never sent to any server — it only travels between people when you paste the link. There is no backend, no account, and no tracking.
+
+**How it works:** your decisions are serialized into a compact binary format, compressed with DEFLATE, base64url-encoded, and placed after `#r=` in the URL. The recipient's browser decodes and inflates it entirely locally.
+
+**What the link contains:** your top 4 films and every head-to-head decision you made, in reverse chronological order (most recent/decisive first). Film data (names, years, Letterboxd links) is embedded in the link since there is no server to fetch it from.
+
+**Long links:** a typical 200-film game produces a link of a few hundred characters. Very large libraries (500+ films with many decisions) can produce longer links; a warning appears if the link exceeds 8,000 characters. The link still works as a direct URL; some apps or SMS may truncate it.
+
+**Viewing a shared link:** opening the link shows a read-only view of the sharer's top four and their decisions. It never touches the viewer's own saved game — reloading without the hash resumes the viewer's own tournament.
+
 ## Resuming and starting over
 
 Your progress is saved in `localStorage` after every pick. If you reload or navigate away, you'll resume exactly where you left off.

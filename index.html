@@ -228,6 +228,38 @@
         <button id="btn-restart-results" class="btn-primary">Start over</button>
         <button id="btn-different-file" class="btn-secondary">Use a different file</button>
       </div>
+
+      <div class="share-strip">
+        <button id="btn-share-toggle" class="btn-secondary share-toggle-btn" aria-expanded="false" aria-controls="share-panel">Share result</button>
+      </div>
+      <div id="share-panel" class="share-panel" hidden>
+        <div class="share-panel-inner">
+          <label class="share-label" for="share-nickname">Your name (optional)</label>
+          <input id="share-nickname" class="share-input" type="text" maxlength="40" placeholder="e.g. Dima">
+          <button id="btn-copy-link" class="btn-copy share-copy-btn">Copy share link</button>
+          <p id="share-length-warning" class="share-warning" hidden>Long link — works as a direct link, but some apps, SMS, or QR codes may truncate it.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================
+       Screen 5: Shared view (read-only)
+  ======================================================= -->
+  <section id="screen-shared" class="screen" aria-labelledby="shared-heading">
+    <div class="content-box shared-view">
+      <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
+      <p class="eyebrow" id="shared-eyebrow">Letterboxd · top four</p>
+      <h1 id="shared-heading" class="shared-title"></h1>
+      <ol id="shared-results-list" class="results-list shared-results-list"></ol>
+      <div class="decisions-block">
+        <p class="decisions-heading"><span id="decisions-label">Their decisions</span> <span id="decisions-count" class="decisions-count"></span></p>
+        <ol id="decisions-list" class="decisions-list"></ol>
+      </div>
+      <div class="shared-cta">
+        <button id="btn-make-own" class="btn-primary">Make your own top four</button>
+        <p class="shared-cta-note">Free, runs entirely in your browser</p>
+      </div>
     </div>
   </section>
 

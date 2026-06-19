@@ -5,7 +5,14 @@
 // Test suite for app.js (Node.js, no test framework needed)
 // ============================================================
 
-const { parseCSV, parseCSVLine, TournamentEngine } = require('./app.js');
+const {
+  parseCSV, parseCSVLine, TournamentEngine,
+  varintWrite, varintRead,
+  buildSharePayload, payloadToState,
+  serializePayload, deserializePayload,
+  b64urlFromBytes, bytesFromB64url,
+  encodeShare, decodeShare,
+} = require('./app.js');
 const fs = require('fs');
 const path = require('path');
 
@@ -367,8 +374,101 @@ assert(!/<img/i.test(appJs), 'no <img> tags in app.js');
 assert(!/<img/i.test(indexHtml.replace(/<svg[^]*?<\/svg>/g, '')), 'no <img> tags in index.html (outside SVG)');
 
 // ============================================================
-// Summary
+// 6. Share round-trip tests (async)
 // ============================================================
-console.log(`\n${'='.repeat(50)}`);
-console.log(`Results: ${passed} passed, ${failed} failed`);
-if (failed > 0) process.exit(1);
+
+(async function shareTests() {
+  console.log('\n--- Share round-trip ---');
+
+  // Build a completed engine with 8 films
+  const films8 = Array.from({ length: 8 }, (_, i) => ({
+    name: `Film ${i}`,
+    year: String(2000 + i),
+    uri: `https://boxd.it/${i}aaa`,
+  }));
+  const eng8 = new TournamentEngine(films8);
+  while (!eng8.isComplete()) {
+    const pair = eng8.state.current;
+    eng8.choose(Math.min(pair[0], pair[1]));
+  }
+
+  // buildSharePayload → encodeShare → decodeShare → payload deep-equals
+  const state8 = eng8.state;
+  const payload8 = buildSharePayload(state8, 'Dima');
+
+  // Serialization round-trip
+  const serialized = serializePayload(payload8);
+  const deser = deserializePayload(serialized);
+  assertEqual(deser.nick, payload8.nick, 'serialize→deserialize: nick matches');
+  assertEqual(deser.f.length, payload8.f.length, 'serialize→deserialize: film count matches');
+  assertEqual(deser.t, payload8.t, 'serialize→deserialize: top-4 indices match');
+  assertEqual(deser.l.length, payload8.l.length, 'serialize→deserialize: match count matches');
+  for (let i = 0; i < deser.l.length; i++) {
+    if (deser.l[i].w !== payload8.l[i].w || deser.l[i].l !== payload8.l[i].l) {
+      assert(false, `serialize→deserialize: match[${i}] differs`);
+    }
+  }
+  assert(true, 'serialize→deserialize: all matches match');
+
+  // b64url byte round-trip
+  const testBytes = new Uint8Array([0, 127, 128, 255, 64, 32, 16]);
+  const b64 = b64urlFromBytes(testBytes);
+  const back = bytesFromB64url(b64);
+  assertEqual(Array.from(back), Array.from(testBytes), 'b64url byte round-trip');
+
+  // encodeShare → decodeShare
+  const encoded = await encodeShare(payload8);
+  assert(typeof encoded === 'string' && encoded.length > 0, 'encodeShare returns a non-empty string');
+  const decoded = await decodeShare(encoded);
+  assertEqual(decoded.nick, payload8.nick, 'encode→decode: nick matches');
+  assertEqual(decoded.f.length, payload8.f.length, 'encode→decode: film count matches');
+  assertEqual(decoded.t, payload8.t, 'encode→decode: top-4 indices match');
+  assertEqual(decoded.l.length, payload8.l.length, 'encode→decode: match count matches');
+
+  // payloadToState → TournamentEngine.fromState reproduces getRanking()
+  const restoredState = payloadToState(decoded);
+  const restoredEngine = TournamentEngine.fromState(restoredState);
+  const origRanking = eng8.getRanking().map(f => f.id);
+  const restoredRanking = restoredEngine.getRanking().map(f => f.id);
+  assertEqual(restoredRanking, origRanking, 'payloadToState+fromState reproduces original top-4 ranking');
+
+  // idxWidth=2 case: 300 films
+  const films300 = Array.from({ length: 300 }, (_, i) => ({
+    name: `Movie ${i}`,
+    year: String(1950 + (i % 74)),
+    uri: `https://boxd.it/${i}xx`,
+  }));
+  const eng300 = new TournamentEngine(films300);
+  while (!eng300.isComplete()) {
+    const pair = eng300.state.current;
+    eng300.choose(Math.min(pair[0], pair[1]));
+  }
+  const payload300 = buildSharePayload(eng300.state, 'Test');
+  const enc300 = await encodeShare(payload300);
+  const dec300 = await decodeShare(enc300);
+  const st300 = payloadToState(dec300);
+  const re300 = TournamentEngine.fromState(st300);
+  const orig300 = eng300.getRanking().map(f => f.id);
+  const rest300 = re300.getRanking().map(f => f.id);
+  assertEqual(rest300, orig300, 'idxWidth=2 (300 films): round-trip reproduces top-4 ranking');
+
+  // varint round-trip for edge values
+  function varintRoundTrip(n) {
+    const arr = [];
+    varintWrite(arr, n);
+    const bytes = new Uint8Array(arr);
+    const { value } = varintRead(bytes, 0);
+    return value;
+  }
+  for (const v of [0, 1, 127, 128, 255, 1984, 10000, 65535]) {
+    const rt = varintRoundTrip(v);
+    assertEqual(rt, v, `varint round-trip: ${v}`);
+  }
+
+  // ============================================================
+  // Summary
+  // ============================================================
+  console.log(`\n${'='.repeat(50)}`);
+  console.log(`Results: ${passed} passed, ${failed} failed`);
+  if (failed > 0) process.exit(1);
+})();
