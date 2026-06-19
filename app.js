@@ -1,6 +1,211 @@
 'use strict';
 
 // ============================================================
+// inflateRaw — raw DEFLATE inflater (RFC 1951), no zlib wrapper.
+// Based on the tinf algorithm by Joergen Ibsen (MIT/PD).
+// The tree table stores symbol counts per bit-length; decodeSymbol
+// walks it by accumulating codes until the current value fits.
+// Returns Uint8Array of decompressed data.
+// ============================================================
+
+function inflateRaw(inputBytes) {
+  // ---- Bit reader state ----
+  let src      = 0;   // next byte index in inputBytes
+  let bitbuf   = 0;   // accumulated bits (LSB-first)
+  let bitcount = 0;   // how many bits are in bitbuf
+
+  function readBit() {
+    if (bitcount === 0) {
+      bitbuf   = inputBytes[src++];
+      bitcount = 8;
+    }
+    const b = bitbuf & 1;
+    bitbuf >>>= 1;
+    bitcount--;
+    return b;
+  }
+
+  function readBits(n) {
+    let v = 0;
+    for (let i = 0; i < n; i++) v |= readBit() << i;
+    return v;
+  }
+
+  // ---- Huffman tree: {counts[1..15], syms[]} ----
+  // counts[len] = number of codes of that bit-length.
+  // syms is the canonical order (sorted by length, then by code value).
+  function buildTree(lengths, offset, n) {
+    const counts = new Uint16Array(16); // counts[1..15]
+    for (let i = 0; i < n; i++) {
+      if (lengths[offset + i] > 0) counts[lengths[offset + i]]++;
+    }
+
+    // Build syms array: enumerate in canonical order
+    const offsets = new Uint16Array(16);
+    let total = 0;
+    for (let len = 1; len <= 15; len++) {
+      offsets[len] = total;
+      total += counts[len];
+    }
+
+    const syms = new Uint16Array(total);
+    for (let i = 0; i < n; i++) {
+      const len = lengths[offset + i];
+      if (len > 0) syms[offsets[len]++] = i;
+    }
+
+    return { counts, syms };
+  }
+
+  // Decode one symbol using the "count table" approach:
+  // We try each bit-length from 1 upward. We read bits one by one and
+  // maintain a running integer `code`. For each bit-length `len`, we
+  // check if `code` is within the range assigned to that length.
+  // The range is [first..first+counts[len]-1] where `first` is the
+  // canonical first code at this length.
+  function decodeSymbol(tree) {
+    const { counts, syms } = tree;
+    let code = 0;
+    let first = 0;
+    let symIdx = 0;
+    for (let len = 1; len <= 15; len++) {
+      code |= readBit();
+      const count = counts[len];
+      if (code - count < first) {
+        // Symbol index within this length: code - first
+        return syms[symIdx + (code - first)];
+      }
+      symIdx += count;
+      first   = (first + count) << 1;
+      code  <<= 1;
+    }
+    throw new Error('inflateRaw: Huffman decode error');
+  }
+
+  // ---- RFC 1951 length/distance tables ----
+  const LENGTH_BASE  = [3,4,5,6,7,8,9,10,11,13,15,17,19,23,27,31,35,43,51,59,67,83,99,115,131,163,195,227,258];
+  const LENGTH_EXTRA = [0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,0];
+  const DIST_BASE    = [1,2,3,4,5,7,9,13,17,25,33,49,65,97,129,193,257,385,513,769,1025,1537,2049,3073,4097,6145,8193,12289,16385,24577];
+  const DIST_EXTRA   = [0,0,0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12,13,13];
+
+  // ---- Fixed Huffman trees (RFC 1951 §3.2.6) ----
+  function buildFixedLitTree() {
+    const lens = new Uint8Array(288);
+    let i = 0;
+    for (; i < 144; i++) lens[i] = 8;
+    for (; i < 256; i++) lens[i] = 9;
+    for (; i < 280; i++) lens[i] = 7;
+    for (; i < 288; i++) lens[i] = 8;
+    return buildTree(lens, 0, 288);
+  }
+
+  function buildFixedDistTree() {
+    const lens = new Uint8Array(32);
+    for (let i = 0; i < 32; i++) lens[i] = 5;
+    return buildTree(lens, 0, 32);
+  }
+
+  const FIXED_LT = buildFixedLitTree();
+  const FIXED_DT = buildFixedDistTree();
+
+  // ---- Output buffer ----
+  let out = new Uint8Array(Math.max(inputBytes.length * 3, 256));
+  let dst = 0;
+
+  function grow(n) {
+    if (dst + n > out.length) {
+      const next = new Uint8Array(Math.max(out.length * 2, dst + n + 256));
+      next.set(out.subarray(0, dst));
+      out = next;
+    }
+  }
+
+  function copyMatch(dist, length) {
+    grow(length);
+    for (let i = 0; i < length; i++) {
+      out[dst] = out[dst - dist];
+      dst++;
+    }
+  }
+
+  // ---- Decode one compressed block ----
+  function inflateBlock(lt, dt) {
+    let sym;
+    for (;;) {
+      sym = decodeSymbol(lt);
+      if (sym === 256) break;
+      if (sym < 256) {
+        grow(1);
+        out[dst++] = sym;
+      } else {
+        const lenIdx = sym - 257;
+        const length = LENGTH_BASE[lenIdx] + readBits(LENGTH_EXTRA[lenIdx]);
+        const dSym   = decodeSymbol(dt);
+        const dist   = DIST_BASE[dSym]    + readBits(DIST_EXTRA[dSym]);
+        copyMatch(dist, length);
+      }
+    }
+  }
+
+  // ---- Uncompressed block ----
+  function inflateStored() {
+    bitcount = 0; bitbuf = 0; // discard partial byte
+    const len = inputBytes[src] | (inputBytes[src + 1] << 8);
+    src += 4; // skip len + nlen
+    grow(len);
+    for (let i = 0; i < len; i++) out[dst++] = inputBytes[src++];
+  }
+
+  // ---- Dynamic Huffman block ----
+  function inflateDynamic() {
+    const hlit  = readBits(5) + 257;
+    const hdist = readBits(5) + 1;
+    const hclen = readBits(4) + 4;
+
+    const CLEN_ORDER = [16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15];
+    const clenLens = new Uint8Array(19);
+    for (let i = 0; i < hclen; i++) clenLens[CLEN_ORDER[i]] = readBits(3);
+
+    const clt = buildTree(clenLens, 0, 19);
+    const lens = new Uint8Array(hlit + hdist);
+    let i = 0;
+    while (i < hlit + hdist) {
+      const sym = decodeSymbol(clt);
+      if (sym < 16) {
+        lens[i++] = sym;
+      } else if (sym === 16) {
+        const prev = lens[i - 1];
+        const rep  = readBits(2) + 3;
+        for (let k = 0; k < rep; k++) lens[i++] = prev;
+      } else if (sym === 17) {
+        const rep = readBits(3) + 3;
+        i += rep;
+      } else {
+        const rep = readBits(7) + 11;
+        i += rep;
+      }
+    }
+
+    const lt = buildTree(lens, 0, hlit);
+    const dt = buildTree(lens, hlit, hdist);
+    inflateBlock(lt, dt);
+  }
+
+  // ---- Main decompression loop ----
+  let bfinal;
+  do {
+    bfinal     = readBit();
+    const btype = readBits(2);
+    if      (btype === 0) inflateStored();
+    else if (btype === 1) inflateBlock(FIXED_LT, FIXED_DT);
+    else if (btype === 2) inflateDynamic();
+    else throw new Error('inflateRaw: reserved block type');
+  } while (!bfinal);
+
+  return out.subarray(0, dst);
+}
+
+// ============================================================
 // CSV Parser
 // ============================================================
 
@@ -133,11 +338,19 @@ async function extractWatchedCSV(arrayBuffer) {
     // Stored — raw bytes
     return new TextDecoder('utf-8').decode(new Uint8Array(compressedBlob));
   } else if (entry.compressionMethod === 8) {
-    // Deflate (raw)
-    const blob   = new Blob([compressedBlob]);
-    const ds     = new DecompressionStream('deflate-raw');
-    const stream = blob.stream().pipeThrough(ds);
-    return new Response(stream).text();
+    // Deflate (raw) — try native DecompressionStream, fall back to inflateRaw
+    const compressedBytes = new Uint8Array(compressedBlob);
+    try {
+      if (typeof DecompressionStream !== 'undefined') {
+        const blob   = new Blob([compressedBytes]);
+        const ds     = new DecompressionStream('deflate-raw');
+        const stream = blob.stream().pipeThrough(ds);
+        return new Response(stream).text();
+      }
+    } catch (_) {
+      // fall through to inflateRaw
+    }
+    return new TextDecoder('utf-8').decode(inflateRaw(compressedBytes));
   } else {
     throw new Error(
       `Unsupported compression method ${entry.compressionMethod} (only Store and Deflate are supported).`
@@ -613,15 +826,22 @@ function bytesFromB64url(str) {
 async function encodeShare(payload) {
   const raw = serializePayload(payload);
   let finalBytes;
+  let compressed = null;
   if (typeof CompressionStream !== 'undefined') {
-    const blob = new Blob([raw]);
-    const cs = new CompressionStream('deflate-raw');
-    const stream = blob.stream().pipeThrough(cs);
-    const compressed = await new Response(stream).arrayBuffer();
-    const cBytes = new Uint8Array(compressed);
-    finalBytes = new Uint8Array(1 + cBytes.length);
+    try {
+      const blob = new Blob([raw]);
+      const cs = new CompressionStream('deflate-raw');
+      const stream = blob.stream().pipeThrough(cs);
+      const buf = await new Response(stream).arrayBuffer();
+      compressed = new Uint8Array(buf);
+    } catch (_) {
+      // fall through to raw method
+    }
+  }
+  if (compressed !== null) {
+    finalBytes = new Uint8Array(1 + compressed.length);
     finalBytes[0] = 0x44; // 'D'
-    finalBytes.set(cBytes, 1);
+    finalBytes.set(compressed, 1);
   } else {
     finalBytes = new Uint8Array(1 + raw.length);
     finalBytes[0] = 0x52; // 'R'
@@ -636,11 +856,19 @@ async function decodeShare(str) {
   const body = bytes.slice(1);
   let raw;
   if (method === 0x44) { // 'D' — deflate-raw
-    const blob = new Blob([body]);
-    const ds = new DecompressionStream('deflate-raw');
-    const stream = blob.stream().pipeThrough(ds);
-    const buf = await new Response(stream).arrayBuffer();
-    raw = new Uint8Array(buf);
+    try {
+      if (typeof DecompressionStream !== 'undefined') {
+        const blob = new Blob([body]);
+        const ds = new DecompressionStream('deflate-raw');
+        const stream = blob.stream().pipeThrough(ds);
+        const buf = await new Response(stream).arrayBuffer();
+        raw = new Uint8Array(buf);
+      } else {
+        raw = inflateRaw(body);
+      }
+    } catch (_) {
+      raw = inflateRaw(body);
+    }
   } else if (method === 0x52) { // 'R' — raw
     raw = body;
   } else {
@@ -687,14 +915,19 @@ if (typeof window !== 'undefined') {
   // ---- App-level state ----
   let currentFilms  = null; // Film[]
   let engine        = null; // TournamentEngine
+  let sharedView    = false; // true when viewing someone else's share link
+  let sharedNick    = '';    // nick from the decoded payload
 
   // ---- DOM refs (populated in init) ----
   let elScreens, elUploadZone, elFileInput, elUploadStatus, elUploadError,
       elStartPicking, elProgress, elCardA, elCardB, elResultsList,
       elProgressBar, elProgressFill, elSubProgress, elBracket, elToggleBracket,
-      elUndoMatchup, elUndoResults, elToggleFull, elFullRanking;
+      elUndoMatchup, elUndoResults, elToggleFull, elFullRanking,
+      elToggleDecisions, elDecisionsBlock;
 
-  let fullVisible = false;
+  let fullVisible        = false;
+  let decisionsVisible   = false;
+  let decisionsRendered  = false;
 
   // Undo stack — state snapshots taken before each pick (persisted
   // separately from main progress so a quota error can't lose it).
@@ -1016,7 +1249,71 @@ if (typeof window !== 'undefined') {
     applyFullVisibility();
   }
 
-  // ---- Show results ----
+  // ---- Decisions list (collapsed by default, works in both modes) ----
+  function renderDecisions(label) {
+    const elDecisionsLabel = document.getElementById('decisions-label');
+    const elDecisionsCount = document.getElementById('decisions-count');
+    const elDecisionsList  = document.getElementById('decisions-list');
+
+    elDecisionsLabel.textContent = label;
+
+    // Filter log to match events only
+    const matches = engine.state.log.filter(e => e.kind === 'match');
+    elDecisionsCount.textContent = String(matches.length);
+
+    while (elDecisionsList.firstChild) elDecisionsList.removeChild(elDecisionsList.firstChild);
+
+    const films = engine.state.films;
+    // Reverse chronological (latest first)
+    for (let i = matches.length - 1; i >= 0; i--) {
+      const e = matches[i];
+      const winnerName = films[e.winner] ? films[e.winner].name : '?';
+      const loserName  = films[e.loser]  ? films[e.loser].name  : '?';
+
+      const li = document.createElement('li');
+      li.className = 'decision-row';
+
+      const chose = document.createElement('span');
+      chose.className = 'decision-chose';
+      chose.textContent = 'Chose ';
+
+      const winner = document.createElement('strong');
+      winner.className = 'decision-winner';
+      winner.textContent = winnerName;
+
+      const over = document.createElement('span');
+      over.className = 'decision-over';
+      over.textContent = ' over ';
+
+      const loser = document.createElement('span');
+      loser.className = 'decision-loser';
+      loser.textContent = loserName;
+
+      li.appendChild(chose);
+      li.appendChild(winner);
+      li.appendChild(over);
+      li.appendChild(loser);
+      elDecisionsList.appendChild(li);
+    }
+    decisionsRendered = true;
+  }
+
+  function applyDecisionsVisibility() {
+    elDecisionsBlock.hidden = !decisionsVisible;
+    elToggleDecisions.setAttribute('aria-expanded', String(decisionsVisible));
+    elToggleDecisions.textContent = decisionsVisible ? 'Hide decisions' : 'Show decisions';
+    if (decisionsVisible && !decisionsRendered) {
+      const label = sharedView ? 'Their decisions' : 'Your decisions';
+      renderDecisions(label);
+    }
+  }
+
+  function toggleDecisions() {
+    decisionsVisible = !decisionsVisible;
+    applyDecisionsVisibility();
+  }
+
+  // ---- Show results (owner and shared modes) ----
   function showResults() {
     const ranking = engine.getRanking();
     // Clear safely (no untrusted HTML — only our own structural empty state)
@@ -1060,7 +1357,38 @@ if (typeof window !== 'undefined') {
     fullVisible = false;
     applyFullVisibility();
 
-    updateUndoButtons();
+    // Decisions toggle: only offered when there is at least 1 match in the log
+    const matchCount = engine.state.log.filter(e => e.kind === 'match').length;
+    decisionsVisible = false;
+    decisionsRendered = false;
+    if (matchCount > 0) {
+      elToggleDecisions.hidden = false;
+    } else {
+      elToggleDecisions.hidden = true;
+    }
+    applyDecisionsVisibility();
+
+    // Mode-specific heading and controls
+    const elHeading       = document.getElementById('results-heading');
+    const elOwnerControls = document.getElementById('results-owner-controls');
+    const elMakeOwn       = document.getElementById('btn-make-own');
+    const elMakeOwnWrap   = elMakeOwn.parentElement;
+
+    if (sharedView) {
+      elHeading.textContent   = sharedNick
+        ? sharedNick + '\u2019s Top Four'
+        : 'A Letterboxd Top Four';
+      elOwnerControls.hidden  = true;
+      elMakeOwn.hidden        = false;
+      elMakeOwnWrap.hidden    = false;
+    } else {
+      elHeading.textContent   = 'Your top favorites';
+      elOwnerControls.hidden  = false;
+      elMakeOwn.hidden        = true;
+      elMakeOwnWrap.hidden    = true;
+      updateUndoButtons();
+    }
+
     showScreen('results');
   }
 
@@ -1187,9 +1515,12 @@ if (typeof window !== 'undefined') {
     elUndoResults  = document.getElementById('btn-undo-results');
     elUndoMatchup.addEventListener('click', undoLast);
     elUndoResults.addEventListener('click', undoLast);
-    elToggleFull   = document.getElementById('btn-toggle-full');
-    elFullRanking  = document.getElementById('full-ranking');
+    elToggleFull        = document.getElementById('btn-toggle-full');
+    elFullRanking       = document.getElementById('full-ranking');
     elToggleFull.addEventListener('click', toggleFull);
+    elToggleDecisions   = document.getElementById('btn-toggle-decisions');
+    elDecisionsBlock    = document.getElementById('decisions-block');
+    elToggleDecisions.addEventListener('click', toggleDecisions);
 
     // Restore the graph toggle preference
     try { bracketVisible = localStorage.getItem(BRACKET_KEY) === '1'; } catch (_) {}
@@ -1276,6 +1607,14 @@ if (typeof window !== 'undefined') {
     document.getElementById('btn-restart-results').addEventListener('click', startOver);
     document.getElementById('btn-different-file').addEventListener('click', useDifferentFile);
 
+    // "Make your own top four" — shown in shared mode, hidden in owner mode
+    document.getElementById('btn-make-own').addEventListener('click', () => {
+      history.replaceState(null, '', location.pathname);
+      sharedView = false;
+      engine     = null;
+      showScreen('intro');
+    });
+
     // --- Share panel wiring ---
     const elShareToggle = document.getElementById('btn-share-toggle');
     const elSharePanel  = document.getElementById('share-panel');
@@ -1283,147 +1622,87 @@ if (typeof window !== 'undefined') {
     const elCopyBtn     = document.getElementById('btn-copy-link');
     const elShareWarn   = document.getElementById('share-length-warning');
 
+    // Pre-generate the share link so the copy click can write to the clipboard
+    // synchronously within the user gesture. iOS Safari rejects clipboard writes
+    // that happen after an `await`, which made copying fail on mobile.
+    const copyLabel = elCopyBtn.textContent;
+    let shareLink = '';
+
+    async function regenShareLink() {
+      if (!engine || !engine.isComplete()) { shareLink = ''; return; }
+      const b64 = await encodeShare(buildSharePayload(engine.state, elShareNick.value.trim()));
+      shareLink = location.origin + location.pathname + '#r=' + b64;
+      elShareWarn.hidden = shareLink.length <= 8000;
+    }
+
+    function flashCopyBtn(text) {
+      elCopyBtn.textContent = text;
+      elCopyBtn.classList.add('copied');
+      setTimeout(() => {
+        elCopyBtn.textContent = copyLabel;
+        elCopyBtn.classList.remove('copied');
+      }, 1500);
+    }
+
+    function legacyCopy(text) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.top = '-9999px';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      let ok = false;
+      try { ok = document.execCommand('copy'); } catch (_) {}
+      document.body.removeChild(ta);
+      return ok;
+    }
+
     elShareToggle.addEventListener('click', () => {
       const expanded = elSharePanel.hidden === false;
       elSharePanel.hidden = expanded;
       elShareToggle.setAttribute('aria-expanded', String(!expanded));
+      if (!expanded) regenShareLink(); // opening — prepare the link up front
     });
 
-    elCopyBtn.addEventListener('click', async () => {
+    // Regenerate when the nickname changes (not in a gesture, so awaiting is fine).
+    elShareNick.addEventListener('input', () => { regenShareLink(); });
+
+    elCopyBtn.addEventListener('click', () => {
       if (!engine || !engine.isComplete()) return;
-      const nick = elShareNick.value.trim();
-      const payload = buildSharePayload(engine.state, nick);
-      const b64 = await encodeShare(payload);
-      const link = location.origin + location.pathname + '#r=' + b64;
 
-      // Length warning
-      elShareWarn.hidden = link.length <= 8000;
-
-      // Copy to clipboard
-      async function doCopy() {
+      // The link is normally pre-generated (panel open / nickname input), so we
+      // can call writeText synchronously and keep the iOS user-gesture intact.
+      if (shareLink && navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(shareLink).then(
+          () => flashCopyBtn('Copied!'),
+          () => flashCopyBtn(legacyCopy(shareLink) ? 'Copied!' : 'Press Ctrl/⌘+C')
+        );
+        return;
+      }
+      if (shareLink) {
+        flashCopyBtn(legacyCopy(shareLink) ? 'Copied!' : 'Press Ctrl/⌘+C');
+        return;
+      }
+      // Rare: link not ready yet — generate then copy (best effort).
+      regenShareLink().then(() => {
         if (navigator.clipboard && navigator.clipboard.writeText) {
-          await navigator.clipboard.writeText(link);
-        } else {
-          // Fallback: offscreen textarea
-          const ta = document.createElement('textarea');
-          ta.value = link;
-          ta.style.position = 'fixed';
-          ta.style.top = '-9999px';
-          ta.style.left = '-9999px';
-          document.body.appendChild(ta);
-          ta.select();
-          document.execCommand('copy');
-          document.body.removeChild(ta);
+          return navigator.clipboard.writeText(shareLink);
         }
-      }
-
-      try {
-        await doCopy();
-        const orig = elCopyBtn.textContent;
-        elCopyBtn.textContent = 'Copied!';
-        elCopyBtn.classList.add('copied');
-        setTimeout(() => {
-          elCopyBtn.textContent = orig;
-          elCopyBtn.classList.remove('copied');
-        }, 1500);
-      } catch (_) {
-        // If copy fails, silently ignore
-      }
+        if (!legacyCopy(shareLink)) throw new Error('copy failed');
+      }).then(
+        () => flashCopyBtn('Copied!'),
+        () => flashCopyBtn('Press Ctrl/⌘+C')
+      );
     });
 
-    // --- Shared view renderer ---
-    function renderSharedView(payload) {
-      const sharedEngine = TournamentEngine.fromState(payloadToState(payload));
-      const ranking = sharedEngine.getRanking();
-
-      // Title
-      const elTitle = document.getElementById('shared-heading');
-      elTitle.textContent = payload.nick
-        ? payload.nick + '’s Top Four'
-        : 'A Letterboxd Top Four';
-
-      // Top-4 list
-      const elSharedList = document.getElementById('shared-results-list');
-      while (elSharedList.firstChild) elSharedList.removeChild(elSharedList.firstChild);
-      ranking.forEach((film, i) => {
-        const li = document.createElement('li');
-
-        const rankSpan = document.createElement('span');
-        rankSpan.className = 'rank-number';
-        rankSpan.textContent = '#' + (i + 1);
-
-        const titleSpan = document.createElement('span');
-        titleSpan.className = 'rank-title';
-        titleSpan.textContent = film.name;
-
-        const yearSpan = document.createElement('span');
-        yearSpan.className = 'rank-year';
-        yearSpan.textContent = film.year ? '(' + film.year + ')' : '';
-
-        const link = document.createElement('a');
-        link.className = 'letterboxd-link';
-        link.href = safeHref(film.uri);
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        link.textContent = 'Letterboxd ↗';
-
-        li.appendChild(rankSpan);
-        li.appendChild(document.createTextNode(' '));
-        li.appendChild(titleSpan);
-        li.appendChild(document.createTextNode(' '));
-        li.appendChild(yearSpan);
-        li.appendChild(document.createTextNode(' '));
-        li.appendChild(link);
-        elSharedList.appendChild(li);
-      });
-
-      // Decisions count
-      const elDecisionsCount = document.getElementById('decisions-count');
-      elDecisionsCount.textContent = String(payload.l.length);
-
-      // Decisions list — REVERSE chronological (latest/most decisive first)
-      const elDecisionsList = document.getElementById('decisions-list');
-      while (elDecisionsList.firstChild) elDecisionsList.removeChild(elDecisionsList.firstChild);
-
-      const films = payloadToState(payload).films;
-      const matches = payload.l.slice().reverse(); // copy and reverse
-      matches.forEach(e => {
-        const winnerName = films[e.w] ? films[e.w].name : '?';
-        const loserName  = films[e.l] ? films[e.l].name : '?';
-
-        const li = document.createElement('li');
-        li.className = 'decision-row';
-
-        const chose = document.createElement('span');
-        chose.className = 'decision-chose';
-        chose.textContent = 'Chose ';
-
-        const winner = document.createElement('strong');
-        winner.className = 'decision-winner';
-        winner.textContent = winnerName;
-
-        const over = document.createElement('span');
-        over.className = 'decision-over';
-        over.textContent = ' over ';
-
-        const loser = document.createElement('span');
-        loser.className = 'decision-loser';
-        loser.textContent = loserName;
-
-        li.appendChild(chose);
-        li.appendChild(winner);
-        li.appendChild(over);
-        li.appendChild(loser);
-        elDecisionsList.appendChild(li);
-      });
-
-      // CTA button
-      document.getElementById('btn-make-own').addEventListener('click', () => {
-        history.replaceState(null, '', location.pathname);
-        showScreen('intro');
-      });
-
-      showScreen('shared');
+    // --- Load a shared payload into the results screen (no localStorage) ---
+    function loadSharedPayload(payload) {
+      engine     = TournamentEngine.fromState(payloadToState(payload));
+      sharedView = true;
+      sharedNick = payload.nick || '';
+      showResults();
     }
 
     // --- Hash check / resume (async IIFE, placed last in init) ---
@@ -1432,13 +1711,14 @@ if (typeof window !== 'undefined') {
       if (/^#r=/.test(hash)) {
         try {
           const payload = await decodeShare(hash.slice(3));
-          renderSharedView(payload);
-          return; // DO NOT touch localStorage — viewer's own saved game is untouched
+          loadSharedPayload(payload);
+          return; // DO NOT touch localStorage — viewer’s own saved game is untouched
         } catch (_) {
           // Invalid/corrupt hash — fall through to normal flow
         }
       }
       // Normal resume path
+      sharedView = false;
       const saved = loadSavedState();
       if (saved && saved.films && saved.engineState) {
         currentFilms = saved.films;
@@ -1458,7 +1738,7 @@ if (typeof window !== 'undefined') {
     // becomes #r=... (e.g. pasting a share link into an already-open tab).
     window.addEventListener('hashchange', () => {
       if (/^#r=/.test(location.hash)) {
-        decodeShare(location.hash.slice(3)).then(renderSharedView).catch(() => {});
+        decodeShare(location.hash.slice(3)).then(loadSharedPayload).catch(() => {});
       }
     });
   }
@@ -1482,5 +1762,6 @@ if (typeof module !== 'undefined' && module.exports) {
     serializePayload, deserializePayload,
     b64urlFromBytes, bytesFromB64url,
     encodeShare, decodeShare,
+    inflateRaw,
   };
 }

@@ -12,6 +12,7 @@ const {
   serializePayload, deserializePayload,
   b64urlFromBytes, bytesFromB64url,
   encodeShare, decodeShare,
+  inflateRaw,
 } = require('./app.js');
 const fs = require('fs');
 const path = require('path');
@@ -463,6 +464,139 @@ assert(!/<img/i.test(indexHtml.replace(/<svg[^]*?<\/svg>/g, '')), 'no <img> tags
   for (const v of [0, 1, 127, 128, 255, 1984, 10000, 65535]) {
     const rt = varintRoundTrip(v);
     assertEqual(rt, v, `varint round-trip: ${v}`);
+  }
+
+  // ============================================================
+  // 7. inflateRaw round-trip tests
+  // ============================================================
+  console.log('\n--- inflateRaw round-trip ---');
+
+  const zlib = require('zlib');
+
+  // Helper: compress with Node's zlib.deflateRawSync, then inflate with inflateRaw
+  function roundTrip(buf, label) {
+    const compressed = zlib.deflateRawSync(buf);
+    const result = inflateRaw(compressed);
+    if (result.length !== buf.length) {
+      assert(false, `inflateRaw: length mismatch for ${label}: expected ${buf.length}, got ${result.length}`);
+      return;
+    }
+    for (let i = 0; i < buf.length; i++) {
+      if (result[i] !== buf[i]) {
+        assert(false, `inflateRaw: byte mismatch at index ${i} for ${label}`);
+        return;
+      }
+    }
+    assert(true, `inflateRaw round-trip: ${label}`);
+  }
+
+  // Empty buffer
+  roundTrip(Buffer.alloc(0), 'empty buffer');
+
+  // Single byte
+  roundTrip(Buffer.from([0x42]), 'single byte');
+
+  // All zeros (highly compressible)
+  roundTrip(Buffer.alloc(1000, 0), 'all-zeros 1000 bytes');
+
+  // All same byte, different value
+  roundTrip(Buffer.alloc(256, 0xff), 'all-0xFF 256 bytes');
+
+  // Sequential bytes 0-255 repeated
+  const seqBuf = Buffer.alloc(1024);
+  for (let i = 0; i < seqBuf.length; i++) seqBuf[i] = i & 0xff;
+  roundTrip(seqBuf, 'sequential 0-255 x4 (1024 bytes)');
+
+  // Random-ish data (not truly random — deterministic for repeatability)
+  const pseudoRandom = Buffer.alloc(2048);
+  let seed = 12345;
+  for (let i = 0; i < pseudoRandom.length; i++) {
+    seed = (seed * 1664525 + 1013904223) & 0xffffffff;
+    pseudoRandom[i] = (seed >>> 24) & 0xff;
+  }
+  roundTrip(pseudoRandom, 'pseudo-random 2048 bytes');
+
+  // Larger repetitive data (long back-references)
+  const repStr = 'The quick brown fox jumps over the lazy dog. ';
+  const repBuf = Buffer.from(repStr.repeat(100));
+  roundTrip(repBuf, 'repetitive text 4500 bytes');
+
+  // 8KB of mixed content
+  const mixed = Buffer.alloc(8192);
+  for (let i = 0; i < mixed.length; i++) {
+    if (i % 3 === 0) mixed[i] = 65 + (i % 26);
+    else if (i % 3 === 1) mixed[i] = i & 0xff;
+    else mixed[i] = 0;
+  }
+  roundTrip(mixed, 'mixed 8192 bytes');
+
+  // Multiple small buffers of varying sizes
+  for (const size of [1, 2, 3, 7, 15, 31, 63, 127, 255, 511]) {
+    const buf = Buffer.alloc(size);
+    for (let i = 0; i < size; i++) buf[i] = (i * 7 + 13) & 0xff;
+    roundTrip(buf, `size=${size}`);
+  }
+
+  // Real share payload round-trip via inflateRaw (the actual mobile fix)
+  {
+    const films10 = Array.from({ length: 10 }, (_, i) => ({
+      name: `Film ${i}`, year: String(2000 + i), uri: `https://boxd.it/${i}`,
+    }));
+    const eng10 = new TournamentEngine(films10);
+    while (!eng10.isComplete()) {
+      const pair = eng10.state.current;
+      eng10.choose(Math.min(pair[0], pair[1]));
+    }
+    const payload10 = buildSharePayload(eng10.state, 'Letterbox Larry');
+    const serialized10 = serializePayload(payload10);
+    const compressed10 = zlib.deflateRawSync(serialized10);
+    const inflated10 = inflateRaw(compressed10);
+    const deserialized10 = deserializePayload(inflated10);
+    assertEqual(deserialized10.nick, 'Letterbox Larry', 'inflateRaw payload: nick matches');
+    assertEqual(deserialized10.t, payload10.t, 'inflateRaw payload: top-4 indices match');
+    assert(true, 'inflateRaw share payload round-trip');
+  }
+
+  // ============================================================
+  // 8. Decode-fallback test (the actual mobile fix)
+  // ============================================================
+  console.log('\n--- Decode fallback (mobile fix) ---');
+
+  {
+    // Build a real share blob with compression
+    const filmsFF = Array.from({ length: 10 }, (_, i) => ({
+      name: `Movie ${i}`, year: String(2010 + i), uri: `https://boxd.it/${i}x`,
+    }));
+    const engFF = new TournamentEngine(filmsFF);
+    while (!engFF.isComplete()) {
+      const pair = engFF.state.current;
+      engFF.choose(Math.min(pair[0], pair[1]));
+    }
+    const payloadFF = buildSharePayload(engFF.state, 'Letterbox Larry');
+    const encodedFF = await encodeShare(payloadFF);
+
+    // Force DecompressionStream unavailable to test the fallback
+    const realDCS = globalThis.DecompressionStream;
+    globalThis.DecompressionStream = undefined;
+    let fallbackDecoded;
+    try {
+      fallbackDecoded = await decodeShare(encodedFF);
+    } finally {
+      globalThis.DecompressionStream = realDCS;
+    }
+
+    assertEqual(fallbackDecoded.nick, payloadFF.nick, 'fallback decode: nick matches');
+    assertEqual(fallbackDecoded.t, payloadFF.t, 'fallback decode: top-4 matches');
+    assertEqual(fallbackDecoded.l.length, payloadFF.l.length, 'fallback decode: match count matches');
+
+    // Verify it reproduces the original top-4
+    const fallbackState = payloadToState(fallbackDecoded);
+    const fallbackEngine = TournamentEngine.fromState(fallbackState);
+    const origTop4 = engFF.getRanking().map(f => f.id);
+    const fallTop4 = fallbackEngine.getRanking().map(f => f.id);
+    assertEqual(fallTop4, origTop4, 'fallback decode: top-4 ranking reproduces original');
+
+    console.log('FALLBACK OK');
   }
 
   // ============================================================
