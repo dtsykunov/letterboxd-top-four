@@ -66,6 +66,8 @@ After finishing, click **Share result** on the results screen to open the share 
 
 **Viewing a shared link:** opening the link shows a read-only view of the sharer's top four and their decisions. It never touches the viewer's own saved game — reloading without the hash resumes the viewer's own tournament.
 
+**Editing a link's name:** `tools/rename-share.js` is a small Node helper to change the nickname embedded in an existing share link without replaying the game: `node tools/rename-share.js "<share link or #r= blob>" "New Name"` prints a new link (omit the name to be prompted). It reuses the app's own encoder/decoder.
+
 ## Resuming and starting over
 
 Your progress is saved in `localStorage` after every pick. If you reload or navigate away, you'll resume exactly where you left off.
