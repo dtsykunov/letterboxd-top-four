@@ -1453,6 +1453,14 @@ if (typeof window !== 'undefined') {
         showScreen('intro');
       }
     })();
+
+    // A bare #hash change does not reload the page, so re-check when the hash
+    // becomes #r=... (e.g. pasting a share link into an already-open tab).
+    window.addEventListener('hashchange', () => {
+      if (/^#r=/.test(location.hash)) {
+        decodeShare(location.hash.slice(3)).then(renderSharedView).catch(() => {});
+      }
+    });
   }
 
   if (document.readyState === 'loading') {
