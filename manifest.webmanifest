@@ -1,0 +1,18 @@
+{
+  "name": "Letterboxd Top Four — Favorite Films Picker",
+  "short_name": "Top Four",
+  "description": "Pick your four favorite Letterboxd films through head-to-head matchups. Runs entirely in your browser.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#14181c",
+  "theme_color": "#14181c",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

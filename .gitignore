@@ -1,0 +1,3 @@
+# Letterboxd data exports (contain personal data — never commit)
+*.zip
+*.csv

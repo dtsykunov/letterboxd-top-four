@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Letterboxd Top Four — Pick Your 4 Favorite Films</title>
+  <meta name="description" content="Free, private browser tool to choose your four favorite Letterboxd films. Import your watched list and rank your top 4 through quick head-to-head matchups. Runs entirely in your browser — nothing is uploaded.">
+  <meta name="keywords" content="letterboxd, letterboxd top 4, top four, favorite films, four favorites, letterboxd favorites picker, film ranking, movie tournament, rank movies, watched list">
+  <meta name="author" content="dtsykunov">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <meta name="theme-color" content="#14181c">
+  <link rel="canonical" href="https://dtsykunov.github.io/letterboxd-top-four/">
+
+  <!-- Icons / manifest -->
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.webmanifest">
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Letterboxd Top Four">
+  <meta property="og:title" content="Letterboxd Top Four — Pick Your 4 Favorite Films">
+  <meta property="og:description" content="Choose your four favorite Letterboxd films through quick head-to-head matchups. Free, private, and runs entirely in your browser.">
+  <meta property="og:url" content="https://dtsykunov.github.io/letterboxd-top-four/">
+  <meta property="og:image" content="https://dtsykunov.github.io/letterboxd-top-four/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Letterboxd Top Four — pick your four favorite films">
+  <meta property="og:locale" content="en_US">
+
+  <!-- Twitter -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Letterboxd Top Four — Pick Your 4 Favorite Films">
+  <meta name="twitter:description" content="Choose your four favorite Letterboxd films through quick head-to-head matchups. Free, private, and runs entirely in your browser.">
+  <meta name="twitter:image" content="https://dtsykunov.github.io/letterboxd-top-four/og-image.png">
+
+  <link rel="stylesheet" href="styles.css">
+
+  <!-- Structured data for search engines & AI assistants -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Letterboxd Top Four",
+    "alternateName": "Letterboxd Favorite Films Picker",
+    "url": "https://dtsykunov.github.io/letterboxd-top-four/",
+    "description": "Free, private browser tool to choose your four favorite Letterboxd films. Import your watched list and rank your top 4 through head-to-head matchups. Everything runs locally in your browser; no data is uploaded.",
+    "applicationCategory": "EntertainmentApplication",
+    "operatingSystem": "Any (modern web browser)",
+    "browserRequirements": "Requires JavaScript.",
+    "isAccessibleForFree": true,
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+    "creator": { "@type": "Person", "name": "dtsykunov" },
+    "keywords": "letterboxd, top 4, favorite films, four favorites, film ranking, movie tournament"
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "How do I pick my four favorite films on Letterboxd?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Export your Letterboxd data, upload the .zip (or watched.csv) to Letterboxd Top Four, and pick the film you prefer in each head-to-head matchup. The tool ranks your top 4 using a tournament with a losers bracket, so a single loss never eliminates a film."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Does my Letterboxd data leave my browser?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "No. Letterboxd Top Four runs entirely in your browser. Your watched list is parsed locally and is never uploaded to any server, sent to any API, or stored anywhere outside your own device."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Is it free?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Yes. It is a free, open static web page hosted on GitHub Pages with no account, no tracking, and no cost."
+        }
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+
+  <!-- ======================================================
+       Screen 1: Intro
+  ======================================================= -->
+  <section id="screen-intro" class="screen active" aria-labelledby="intro-heading">
+    <div class="content-box">
+      <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
+      <p class="eyebrow">Letterboxd · top four</p>
+      <h1 id="intro-heading">Pick Your Favorites</h1>
+      <p class="lead">
+        Can't decide which of the films you've watched on Letterboxd are your true favorites?
+        This tool runs a series of head-to-head matchups and ranks your top&nbsp;4.
+      </p>
+      <ol class="instructions">
+        <li>Export your data from <a href="https://letterboxd.com/settings/data/" target="_blank" rel="noopener noreferrer">letterboxd.com/settings/data</a>.</li>
+        <li>Upload the downloaded <code>.zip</code> — or just the <code>watched.csv</code> inside it.</li>
+        <li>Pick the film you prefer in each head-to-head matchup.</li>
+        <li>Get your ranked top 4.</li>
+      </ol>
+      <div class="intro-note">
+        <p class="intro-note-title">How it works</p>
+        <p>You'll see two films at a time — just pick the one you like more. A single loss
+        doesn't knock a film out: films you pass over can come back in later rounds (there's
+        a losers bracket), so your final four are decided fairly rather than by one unlucky
+        matchup.</p>
+      </div>
+
+      <p class="privacy-note">
+        Everything happens in your browser. Your data never leaves this page.
+      </p>
+      <button id="btn-get-started" class="btn-primary">Get started</button>
+    </div>
+  </section>
+
+  <!-- ======================================================
+       Screen 2: Upload
+  ======================================================= -->
+  <section id="screen-upload" class="screen" aria-labelledby="upload-heading">
+    <div class="content-box">
+      <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
+      <h1 id="upload-heading">Upload your Letterboxd data</h1>
+      <p>Drop your Letterboxd export <code>.zip</code> or bare <code>watched.csv</code> below.</p>
+
+      <div id="upload-zone" class="upload-zone" role="button" tabindex="0"
+           aria-label="Drop file here or click to choose">
+        <svg class="upload-icon" aria-hidden="true" width="40" height="40" viewBox="0 0 24 24"
+             fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        <p class="upload-label">Drop file here</p>
+        <p class="upload-sub">or</p>
+        <label class="btn-secondary" for="file-input">Choose file</label>
+        <input type="file" id="file-input" accept=".zip,.csv" aria-label="Choose a .zip or .csv file">
+      </div>
+
+      <p id="upload-error" class="error-message" role="alert" hidden></p>
+      <p id="upload-status" class="success-message" hidden></p>
+      <button id="btn-start-picking" class="btn-primary" hidden>Start picking</button>
+    </div>
+  </section>
+
+  <!-- ======================================================
+       Screen 3: Matchup
+  ======================================================= -->
+  <section id="screen-matchup" class="screen" aria-labelledby="matchup-heading">
+    <div class="matchup-header">
+      <h1 id="matchup-heading" class="sr-only">Head-to-head matchup</h1>
+      <p id="matchup-progress" class="progress-text" aria-live="polite" aria-atomic="true"></p>
+      <div id="progress-bar" class="progress-bar" role="progressbar"
+           aria-label="Progress for the current favorite">
+        <span id="progress-bar-fill" class="progress-bar-fill"></span>
+      </div>
+      <p id="matchup-subprogress" class="subprogress-text" aria-live="polite"></p>
+      <div class="matchup-actions">
+        <button id="btn-undo-matchup" class="btn-ghost" disabled>← Go back</button>
+        <button id="btn-restart-matchup" class="btn-ghost">Start over</button>
+        <button id="btn-reset-matchup" class="btn-ghost">Reset &amp; use other data</button>
+      </div>
+    </div>
+
+    <div class="cards-container">
+
+      <div id="card-a" class="card" tabindex="0" role="group" aria-label="Option A">
+        <div class="card-body">
+          <h2 class="film-title" id="card-a-title"></h2>
+          <p class="film-year" id="card-a-year"></p>
+          <a class="letterboxd-link" id="card-a-link" target="_blank" rel="noopener noreferrer"
+             href="#">View on Letterboxd ↗</a>
+        </div>
+        <button class="pick-btn" id="btn-pick-a">Pick this one</button>
+      </div>
+
+      <div class="vs-divider" aria-hidden="true">vs</div>
+
+      <div id="card-b" class="card" tabindex="0" role="group" aria-label="Option B">
+        <div class="card-body">
+          <h2 class="film-title" id="card-b-title"></h2>
+          <p class="film-year" id="card-b-year"></p>
+          <a class="letterboxd-link" id="card-b-link" target="_blank" rel="noopener noreferrer"
+             href="#">View on Letterboxd ↗</a>
+        </div>
+        <button class="pick-btn" id="btn-pick-b">Pick this one</button>
+      </div>
+
+    </div>
+
+    <p class="keyboard-hint" aria-hidden="true">
+      Tip: press <kbd>←</kbd> or <kbd>→</kbd> to pick, <kbd>Backspace</kbd> to go back
+    </p>
+
+    <div class="bracket-toggle-wrap">
+      <button id="btn-toggle-bracket" class="btn-ghost"
+              aria-expanded="false" aria-controls="bracket-panel">Show tournament graph</button>
+    </div>
+    <section id="bracket-panel" class="bracket-panel" aria-label="Tournament graph" hidden></section>
+  </section>
+
+  <!-- ======================================================
+       Screen 4: Results
+  ======================================================= -->
+  <section id="screen-results" class="screen" aria-labelledby="results-heading">
+    <div class="content-box">
+      <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
+      <p class="eyebrow">The verdict</p>
+      <h1 id="results-heading">Your top favorites</h1>
+      <ol id="results-list" class="results-list"></ol>
+
+      <div class="fullranking-wrap">
+        <button id="btn-toggle-full" class="btn-ghost"
+                aria-expanded="false" aria-controls="full-ranking" hidden>Show full ranking (places 5+)</button>
+      </div>
+      <div id="full-ranking" class="full-ranking" hidden></div>
+
+      <div class="results-actions">
+        <button id="btn-undo-results" class="btn-secondary" disabled>← Go back</button>
+        <button id="btn-restart-results" class="btn-primary">Start over</button>
+        <button id="btn-different-file" class="btn-secondary">Use a different file</button>
+      </div>
+    </div>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+# Letterboxd Top Four
+
+> A free, private, in-browser tool to choose your four favorite films from your
+> Letterboxd history. You upload your Letterboxd data export, pick the film you
+> prefer in a series of head-to-head matchups, and get a ranked top 4 — ideal for
+> filling in the "Favorite films" section of a Letterboxd profile.
+
+URL: https://dtsykunov.github.io/letterboxd-top-four/
+
+## What it does
+- Import a Letterboxd data export (the `.zip`) or just the `watched.csv` inside it.
+- Compare two films at a time and pick the one you like more.
+- Get your **ranked top 4** favorites (#1–#4).
+
+## Key facts
+- **Privacy**: Everything runs locally in the browser. Your data is never uploaded to a
+  server, sent to any API, or stored anywhere off your device. There are no accounts,
+  no tracking, and no cost.
+- **No spoilers / fair ranking**: It runs a single-elimination tournament to find #1, then
+  a repechage ("losers bracket") for #2–#4. Losing one matchup does not eliminate a film,
+  so the result reflects your true preferences rather than one unlucky pairing.
+- **How it works under the hood**: Static HTML/CSS/JS, no frameworks. The export `.zip` is
+  unpacked in the browser with the native DecompressionStream API. Film cards link out to
+  Letterboxd (films can't be embedded, and posters are not fetched, to keep all data local).
+- **Resuming**: Progress is saved in localStorage; you can reload and continue, undo a
+  previous pick ("Go back"), and view an optional tournament graph.
+
+## Common questions
+- "How do I pick my Letterboxd favorite films / top 4?" → Use this tool: export your
+  Letterboxd data, upload it, and pick winners in each matchup.
+- "Is it private / does my data leave my browser?" → No data leaves your browser.
+- "Is it free?" → Yes, it is a free open static page on GitHub Pages.
