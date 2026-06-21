@@ -920,6 +920,7 @@ if (typeof window !== 'undefined') {
 
   // ---- DOM refs (populated in init) ----
   let elScreens, elUploadZone, elFileInput, elUploadStatus, elUploadError,
+      elUploadName, elUploadMeta,
       elStartPicking, elProgress, elCardA, elCardB, elResultsList,
       elProgressBar, elProgressFill, elSubProgress, elBracket, elToggleBracket,
       elUndoMatchup, elUndoResults, elToggleFull, elFullRanking,
@@ -1396,14 +1397,16 @@ if (typeof window !== 'undefined') {
   function showUploadError(msg) {
     elUploadError.textContent = msg;
     elUploadError.hidden = false;
-    elUploadStatus.hidden = true;
+    elUploadStatus.textContent = '';
+    elUploadZone.classList.remove('is-loaded');
     elStartPicking.hidden = true;
   }
 
   // ---- Process a file (File object) ----
   async function processFile(file) {
     elUploadError.hidden = true;
-    elUploadStatus.hidden = true;
+    elUploadStatus.textContent = '';
+    elUploadZone.classList.remove('is-loaded');
     elStartPicking.hidden = true;
 
     // Detect type
@@ -1443,8 +1446,11 @@ if (typeof window !== 'undefined') {
     currentFilms = films;
     clearAllState(); // Fresh start whenever a new file is loaded
     clearUndo();
-    elUploadStatus.textContent = `${films.length} film${films.length !== 1 ? 's' : ''} loaded.`;
-    elUploadStatus.hidden = false;
+    const countLabel = `${films.length} film${films.length !== 1 ? 's' : ''} ready`;
+    elUploadName.textContent = file.name;
+    elUploadMeta.textContent = countLabel;
+    elUploadZone.classList.add('is-loaded');
+    elUploadStatus.textContent = `${file.name} loaded, ${countLabel}.`;
     elStartPicking.hidden = false;
   }
 
@@ -1485,7 +1491,8 @@ if (typeof window !== 'undefined') {
     currentFilms = null;
     engine = null;
     elUploadError.hidden = true;
-    elUploadStatus.hidden = true;
+    elUploadStatus.textContent = '';
+    elUploadZone.classList.remove('is-loaded');
     elStartPicking.hidden = true;
     elFileInput.value = '';
     showScreen('upload');
@@ -1500,6 +1507,8 @@ if (typeof window !== 'undefined') {
     elUploadZone   = document.getElementById('upload-zone');
     elFileInput    = document.getElementById('file-input');
     elUploadStatus = document.getElementById('upload-status');
+    elUploadName   = document.getElementById('upload-success-name');
+    elUploadMeta   = document.getElementById('upload-success-meta');
     elUploadError  = document.getElementById('upload-error');
     elStartPicking = document.getElementById('btn-start-picking');
     elProgress     = document.getElementById('matchup-progress');

@@ -151,25 +151,46 @@
   <section id="screen-upload" class="screen" aria-labelledby="upload-heading">
     <div class="content-box">
       <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
-      <h1 id="upload-heading">Upload your Letterboxd data</h1>
-      <p>Export your data from <a href="https://letterboxd.com/settings/data/" target="_blank" rel="noopener noreferrer">letterboxd.com/settings/data</a> and drop it below (full <code>.zip</code> or bare <code>watched.csv</code> will work).</p>
+      <h1 id="upload-heading">Upload your data</h1>
+      <p class="upload-intro">Drop your Letterboxd export below, or choose a file.</p>
 
       <div id="upload-zone" class="upload-zone" role="button" tabindex="0"
            aria-label="Drop file here or click to choose">
-        <svg class="upload-icon" aria-hidden="true" width="40" height="40" viewBox="0 0 24 24"
-             fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-          <polyline points="17 8 12 3 7 8"/>
-          <line x1="12" y1="3" x2="12" y2="15"/>
-        </svg>
-        <p class="upload-label">Drop file here</p>
-        <p class="upload-sub">or</p>
-        <label class="btn-secondary" for="file-input">Choose file</label>
+        <div class="upload-default">
+          <svg class="upload-icon" aria-hidden="true" width="40" height="40" viewBox="0 0 24 24"
+               fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          <p class="upload-label">Drop file here</p>
+          <p class="upload-sub">or</p>
+          <label class="btn-secondary" for="file-input">Choose file</label>
+        </div>
+
+        <div class="upload-success">
+          <span class="upload-check" aria-hidden="true">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <path class="upload-check-tick" d="M8 12.5l2.5 2.5L16 9"/>
+            </svg>
+          </span>
+          <p class="upload-success-name" id="upload-success-name"></p>
+          <p class="upload-success-meta" id="upload-success-meta"></p>
+          <label class="upload-change" for="file-input">Choose a different file</label>
+        </div>
+
         <input type="file" id="file-input" accept=".zip,.csv" aria-label="Choose a .zip or .csv file">
       </div>
 
+      <p class="upload-hint">
+        Need the file? <a href="https://letterboxd.com/settings/data/" target="_blank" rel="noopener noreferrer">Export your data from Letterboxd</a>.
+        A <code>.zip</code> or a bare <code>watched.csv</code> both work.
+      </p>
+
       <p id="upload-error" class="error-message" role="alert" hidden></p>
-      <p id="upload-status" class="success-message" hidden></p>
+      <p id="upload-status" class="sr-only" role="status" aria-live="polite"></p>
       <button id="btn-start-picking" class="btn-primary" hidden>Start picking</button>
     </div>
   </section>

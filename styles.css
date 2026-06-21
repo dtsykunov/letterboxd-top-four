@@ -409,13 +409,25 @@ a:hover { color: var(--blue-dark); border-bottom-color: var(--blue-dark); }
 /* ============================================================
    Screen: Upload
    ============================================================ */
+.upload-intro {
+  font-size: clamp(1.02rem, 2.2vw, 1.2rem);
+  color: var(--text-muted);
+  margin: 0 auto 2rem;
+  max-width: 28rem;
+}
+
 .upload-zone {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 13.5rem;
   border: 2px dashed var(--border);
   border-radius: var(--radius);
-  padding: 3rem 1.5rem;
+  padding: 2.25rem 1.5rem;
   text-align: center;
   cursor: pointer;
-  margin: 0 auto 1.25rem;
+  margin: 0 auto 1rem;
   max-width: 32rem;
   background: var(--bg-surface);
   transition: border-color 0.18s var(--ease), background 0.18s var(--ease), transform 0.18s var(--ease);
@@ -432,6 +444,74 @@ a:hover { color: var(--blue-dark); border-bottom-color: var(--blue-dark); }
 .upload-sub   { font-size: 0.85rem; color: var(--text-dim); margin: 0.35rem 0 0.9rem;
                 text-transform: uppercase; letter-spacing: 0.16em; }
 
+/* ---- Loaded / success state ---- */
+.upload-success { display: none; }
+.upload-zone.is-loaded {
+  border-style: solid;
+  border-color: var(--green);
+  background: var(--bg-card);
+}
+.upload-zone.is-loaded .upload-default { display: none; }
+.upload-zone.is-loaded .upload-success { display: block; }
+
+.upload-check { display: inline-flex; color: var(--green); margin-bottom: 0.6rem; }
+.upload-check svg { display: block; }
+.upload-zone.is-loaded .upload-check { animation: check-pop 0.42s var(--ease) both; }
+.upload-check-tick {
+  stroke-dasharray: 14;
+  stroke-dashoffset: 14;
+}
+.upload-zone.is-loaded .upload-check-tick {
+  animation: check-draw 0.35s 0.16s var(--ease) forwards;
+}
+@keyframes check-pop {
+  0%   { transform: scale(0.4); opacity: 0; }
+  60%  { transform: scale(1.08); }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes check-draw { to { stroke-dashoffset: 0; } }
+
+.upload-success-name {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0;
+  max-width: 24rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.upload-success-meta {
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--green);
+  margin: 0.3rem 0 0.9rem;
+}
+.upload-change {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: color 0.15s var(--ease), border-color 0.15s var(--ease);
+}
+.upload-change:hover { color: var(--text); border-bottom-color: var(--text-muted); }
+
+@media (prefers-reduced-motion: reduce) {
+  .upload-zone.is-loaded .upload-check { animation: none; }
+  .upload-check-tick,
+  .upload-zone.is-loaded .upload-check-tick { stroke-dashoffset: 0; animation: none; }
+}
+
+.upload-hint {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  margin: 0 auto 1.5rem;
+  max-width: 30rem;
+  line-height: 1.5;
+}
+
 #file-input {
   position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none;
 }
@@ -441,12 +521,6 @@ a:hover { color: var(--blue-dark); border-bottom-color: var(--blue-dark); }
   font-size: 0.92rem;
   font-weight: 500;
   margin: 0 auto 0.85rem;
-}
-.success-message {
-  color: var(--success);
-  font-size: 0.92rem;
-  font-weight: 600;
-  margin: 0 auto 1.1rem;
 }
 
 /* ============================================================
