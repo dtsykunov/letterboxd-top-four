@@ -277,19 +277,13 @@ a:hover { color: var(--blue-dark); border-bottom-color: var(--blue-dark); }
 .explainer[open] .explainer-chevron { transform: rotate(-135deg); }
 
 .explainer-body {
-  padding: 0 1.4rem 1.3rem;
+  padding: 0.5rem 1.4rem 1.4rem;
   animation: screen-in 0.3s var(--ease) both;
-}
-.explainer-intro {
-  font-size: 0.92rem;
-  color: var(--text-muted);
-  margin: 0 0 1.2rem;
-  line-height: 1.55;
 }
 .explainer-steps {
   list-style: none;
   counter-reset: estep;
-  margin: 0 0 1.2rem;
+  margin: 0;
   padding: 0;
 }
 .explainer-steps li {
@@ -319,14 +313,6 @@ a:hover { color: var(--blue-dark); border-bottom-color: var(--blue-dark); }
   color: var(--text);
   font-weight: 700;
   margin-bottom: 0.1rem;
-}
-.explainer-foot {
-  font-size: 0.85rem;
-  color: var(--text-dim);
-  margin: 0;
-  padding-top: 1.1rem;
-  border-top: 1px solid var(--border);
-  line-height: 1.55;
 }
 @media (prefers-reduced-motion: reduce) {
   .explainer-body { animation: none; }
