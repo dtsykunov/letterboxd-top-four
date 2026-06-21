@@ -1,9 +1,9 @@
-# Letterboxd Top Four — Favorite Films Picker
+# Letterboxd Top Four: Favorite Films Picker
 
 **Live:** https://dtsykunov.github.io/letterboxd-top-four/
 
 A free, private static web app that helps you choose your **four favorite Letterboxd films**
-— the "Favorite films" / **top 4** on your profile — by ranking the films you've watched
+(the "Favorite films" / **top 4** on your profile) by ranking the films you've watched
 through a series of quick head-to-head matchups. Everything runs locally in your browser.
 
 ## Privacy
@@ -21,7 +21,7 @@ Everything runs entirely in your browser. Your Letterboxd data is never uploaded
    Drop the `.zip` directly onto the upload area, or use the file picker. You can also upload just the `watched.csv` from inside the zip if you prefer.
 
 4. **Pick your favorites.**
-   For each matchup, click the film you prefer (or tap the card, or press `←`/`→`). Progress is saved automatically — you can close the tab and resume later.
+   For each matchup, click the film you prefer (or tap the card, or press `←`/`→`). Progress is saved automatically, so you can close the tab and resume later.
 
 5. **See your results.**
    After enough comparisons, you'll see your films ranked #1 through #4. Each links to its Letterboxd page.
@@ -36,7 +36,7 @@ The number of comparisons scales gently: roughly N + 3·log₂(N) matchups for a
 
 On the results screen, **Show full ranking** reveals places 5 and beyond. Because those films
 were only partially compared, they can't be strictly ordered, so they're ranked by **matchups
-won** — which honestly produces **ties**. Films that share a win count share a place (standard
+won**, which honestly produces **ties**. Films that share a win count share a place (standard
 "1224" competition ranking), and each shared placing is labelled as a tie.
 
 ## Progress & the tournament graph
@@ -44,19 +44,19 @@ won** — which honestly produces **ties**. Films that share a win count share a
 While picking, you always see which favorite you're deciding (**#k of 4**) and an exact
 **matchup X of Y** progress bar for the current favorite. (A single-elimination of *m*
 candidates is always exactly *m−1* matchups, so per-favorite progress is exact. The grand
-total across all four favorites is *not* knowable in advance — it depends on your picks — so
+total across all four favorites is *not* knowable in advance (it depends on your picks), so
 it isn't shown as a fake countdown.)
 
 An optional **tournament graph** (toggle on the matchup screen, remembered across reloads)
 shows the rounds as columns: decided matchups with their winners, the live matchup, and
 not-yet-played matchups as "to come" counts. Because winners are re-paired at random each
-round, upcoming pairings genuinely don't exist yet — the graph never spoils what's next.
+round, upcoming pairings genuinely don't exist yet, so the graph never spoils what's next.
 
 ## Sharing your result
 
 After finishing, click **Share result** on the results screen to open the share panel. Optionally enter your name, then click **Copy share link**. The link is copied to your clipboard.
 
-**Privacy:** the entire result (your films, decisions, and nickname) is encoded directly into the URL `#hash` fragment. The hash is never sent to any server — it only travels between people when you paste the link. There is no backend, no account, and no tracking.
+**Privacy:** the entire result (your films, decisions, and nickname) is encoded directly into the URL `#hash` fragment. The hash is never sent to any server; it only travels between people when you paste the link. There is no backend, no account, and no tracking.
 
 **How it works:** your decisions are serialized into a compact binary format, compressed with DEFLATE, base64url-encoded, and placed after `#r=` in the URL. The recipient's browser decodes and inflates it entirely locally.
 
@@ -64,7 +64,7 @@ After finishing, click **Share result** on the results screen to open the share 
 
 **Long links:** a typical 200-film game produces a link of a few hundred characters. Very large libraries (500+ films with many decisions) can produce longer links; a warning appears if the link exceeds 8,000 characters. The link still works as a direct URL; some apps or SMS may truncate it.
 
-**Viewing a shared link:** opening the link shows a read-only view of the sharer's top four and their decisions. It never touches the viewer's own saved game — reloading without the hash resumes the viewer's own tournament.
+**Viewing a shared link:** opening the link shows a read-only view of the sharer's top four and their decisions. It never touches the viewer's own saved game; reloading without the hash resumes the viewer's own tournament.
 
 **Editing a link's name:** `tools/rename-share.js` is a small Node helper to change the nickname embedded in an existing share link without replaying the game: `node tools/rename-share.js "<share link or #r= blob>" "New Name"` prints a new link (omit the name to be prompted). It reuses the app's own encoder/decoder.
 
@@ -97,7 +97,7 @@ The `.nojekyll` file tells GitHub Pages to skip Jekyll processing and serve the 
 | `index.html` | Single-page app, four screens |
 | `styles.css` | Letterboxd-themed dark styles, responsive |
 | `app.js` | ZIP parser, CSV parser, tournament engine, UI |
-| `fonts/` | Self-hosted Hanken Grotesk (SIL OFL) — no external font requests |
+| `fonts/` | Self-hosted Hanken Grotesk (SIL OFL), no external font requests |
 | `favicon.svg` | The three-dot mark used as the site icon |
 | `og-image.png` | 1200×630 social-share / link-preview image |
 | `manifest.webmanifest` | Web app manifest (name, icons, theme color) |

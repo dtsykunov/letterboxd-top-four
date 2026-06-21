@@ -1,5 +1,5 @@
 {
-  "name": "Letterboxd Top Four — Favorite Films Picker",
+  "name": "Letterboxd Top Four: Favorite Films Picker",
   "short_name": "Top Four",
   "description": "Pick your four favorite Letterboxd films through head-to-head matchups. Runs entirely in your browser.",
   "start_url": "./",

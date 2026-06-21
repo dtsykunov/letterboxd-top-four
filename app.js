@@ -1,7 +1,7 @@
 'use strict';
 
 // ============================================================
-// inflateRaw — raw DEFLATE inflater (RFC 1951), no zlib wrapper.
+// inflateRaw - raw DEFLATE inflater (RFC 1951), no zlib wrapper.
 // Based on the tinf algorithm by Joergen Ibsen (MIT/PD).
 // The tree table stores symbol counts per bit-length; decodeSymbol
 // walks it by accumulating codes until the current value fits.
@@ -243,7 +243,7 @@ function parseCSVLine(line) {
       i = end + 1;
     }
   }
-  // Handle trailing comma producing an extra empty field — trim it if fields already
+  // Handle trailing comma producing an extra empty field - trim it if fields already
   // has content and is otherwise aligned
   return fields;
 }
@@ -267,7 +267,7 @@ function parseCSV(text) {
 }
 
 // ============================================================
-// ZIP extractor — pure browser JS, no libraries
+// ZIP extractor - pure browser JS, no libraries
 // ============================================================
 
 async function extractWatchedCSV(arrayBuffer) {
@@ -330,15 +330,15 @@ async function extractWatchedCSV(arrayBuffer) {
   const lhExtraLen    = view.getUint16(lhOffset + 28, true);
   const dataOffset    = lhOffset + 30 + lhFilenameLen + lhExtraLen;
 
-  // Use sizes from central directory — local header may have zeros (data descriptor flag)
+  // Use sizes from central directory - local header may have zeros (data descriptor flag)
   const compressedBlob = arrayBuffer.slice(dataOffset, dataOffset + entry.compressedSize);
 
   // 4. Decompress
   if (entry.compressionMethod === 0) {
-    // Stored — raw bytes
+    // Stored - raw bytes
     return new TextDecoder('utf-8').decode(new Uint8Array(compressedBlob));
   } else if (entry.compressionMethod === 8) {
-    // Deflate (raw) — try native DecompressionStream, fall back to inflateRaw
+    // Deflate (raw) - try native DecompressionStream, fall back to inflateRaw
     const compressedBytes = new Uint8Array(compressedBlob);
     try {
       if (typeof DecompressionStream !== 'undefined') {
@@ -359,7 +359,7 @@ async function extractWatchedCSV(arrayBuffer) {
 }
 
 // ============================================================
-// Tournament Engine — ranked top-4 via single-elim + repechage
+// Tournament Engine - ranked top-4 via single-elim + repechage
 // ============================================================
 
 class TournamentEngine {
@@ -395,7 +395,7 @@ class TournamentEngine {
     }
   }
 
-  // Restore from a plain serialized state object (no _advance call — current is already set)
+  // Restore from a plain serialized state object (no _advance call - current is already set)
   static fromState(savedState) {
     const engine = Object.create(TournamentEngine.prototype);
     engine.state = savedState;
@@ -429,7 +429,7 @@ class TournamentEngine {
         // fall through to check nextRound
       }
 
-      // Current round exhausted — advance
+      // Current round exhausted - advance
       if (s.nextRound.length > 1) {
         // More than one winner/bye: start the next sub-round
         s.round = this._shuffle([...s.nextRound]);
@@ -442,11 +442,11 @@ class TournamentEngine {
         // Exactly one survivor: winner of this mini-tournament
         const winner = s.nextRound.shift();
         this._rankWinner(winner);
-        // _rankWinner may set phase = 'done' or load new round — loop continues
+        // _rankWinner may set phase = 'done' or load new round - loop continues
         continue;
       }
 
-      // Both arrays empty — should not happen in normal flow
+      // Both arrays empty - should not happen in normal flow
       s.phase = 'done';
       return null;
     }
@@ -477,7 +477,7 @@ class TournamentEngine {
       }
 
       if (candidates.length === 1) {
-        // Auto-rank the lone candidate — no comparison needed
+        // Auto-rank the lone candidate - no comparison needed
         winner = candidates[0];
         // continue the while loop to rank it
       } else {
@@ -538,7 +538,7 @@ class TournamentEngine {
 
   // Full leaderboard. Places 1..k are the exact tournament result. The rest
   // can't be strictly ordered (those films were only partially compared), so
-  // they are ranked by matchups won — which honestly produces ties. Tied films
+  // they are ranked by matchups won - which honestly produces ties. Tied films
   // share a place (competition "1224" ranking). Returns:
   //   { top: [{place, id, film, wins, losses}],
   //     rest: [{place, wins, tied, films: [{id, film, wins, losses}]}] }
@@ -583,7 +583,7 @@ class TournamentEngine {
   // Exact progress for the favorite currently being decided.
   // The overall total across all four favorites is NOT knowable in
   // advance (it depends on the user's picks), but a single-elimination
-  // of m candidates is always exactly m-1 matchups — so per-favorite
+  // of m candidates is always exactly m-1 matchups - so per-favorite
   // progress is exact.
   progress() {
     const s = this.state;
@@ -614,7 +614,7 @@ class TournamentEngine {
 }
 
 // ============================================================
-// Share helpers — pure, module-level, exported for tests
+// Share helpers - pure, module-level, exported for tests
 // ============================================================
 
 // LEB128 (unsigned) varint encode into a growing byte array
@@ -855,7 +855,7 @@ async function decodeShare(str) {
   const method = bytes[0];
   const body = bytes.slice(1);
   let raw;
-  if (method === 0x44) { // 'D' — deflate-raw
+  if (method === 0x44) { // 'D' - deflate-raw
     try {
       if (typeof DecompressionStream !== 'undefined') {
         const blob = new Blob([body]);
@@ -869,7 +869,7 @@ async function decodeShare(str) {
     } catch (_) {
       raw = inflateRaw(body);
     }
-  } else if (method === 0x52) { // 'R' — raw
+  } else if (method === 0x52) { // 'R' - raw
     raw = body;
   } else {
     throw new Error('Unknown compression method: ' + method);
@@ -890,7 +890,7 @@ function saveState(films, engine) {
       engineState: engine.state,
     }));
   } catch (_) {
-    // Quota exceeded or private browsing — silently ignore
+    // Quota exceeded or private browsing - silently ignore
   }
 }
 
@@ -908,7 +908,7 @@ function clearAllState() {
 }
 
 // ============================================================
-// UI — only runs in a browser context
+// UI - only runs in a browser context
 // ============================================================
 
 if (typeof window !== 'undefined') {
@@ -929,7 +929,7 @@ if (typeof window !== 'undefined') {
   let decisionsVisible   = false;
   let decisionsRendered  = false;
 
-  // Undo stack — state snapshots taken before each pick (persisted
+  // Undo stack - state snapshots taken before each pick (persisted
   // separately from main progress so a quota error can't lose it).
   const UNDO_KEY = 'letterboxd-fav4-undo-v1';
   const UNDO_MAX = 300;
@@ -972,7 +972,7 @@ if (typeof window !== 'undefined') {
   }
 
   // ============================================================
-  // Tournament graph — rounds as columns. Never reveals upcoming
+  // Tournament graph - rounds as columns. Never reveals upcoming
   // pairings: not-yet-played matchups appear only as TBD counts.
   // ============================================================
   const BRACKET_KEY = 'letterboxd-fav4-bracket';
@@ -1018,7 +1018,7 @@ if (typeof window !== 'undefined') {
 
     const caption = document.createElement('p');
     caption.className = 'bracket-caption';
-    caption.textContent = `Deciding favorite #${rank} — single elimination, winners re-paired at random each round`;
+    caption.textContent = `Deciding favorite #${rank}: single elimination, winners re-paired at random each round`;
     elBracket.appendChild(caption);
 
     if (s.ranked.length > 0) {
@@ -1085,7 +1085,7 @@ if (typeof window !== 'undefined') {
     applyBracketVisibility();
   }
 
-  // ---- Validate a URI — only allow https:// and http:// schemes ----
+  // ---- Validate a URI - only allow https:// and http:// schemes ----
   function safeHref(uri) {
     return /^https?:\/\//i.test(uri) ? uri : '#';
   }
@@ -1115,7 +1115,7 @@ if (typeof window !== 'undefined') {
   }
 
   // ============================================================
-  // Undo — snapshot the engine state before each pick
+  // Undo - snapshot the engine state before each pick
   // ============================================================
   function snapshotState() {
     // Exclude the (constant) film list to keep snapshots small.
@@ -1166,7 +1166,7 @@ if (typeof window !== 'undefined') {
   }
 
   // ============================================================
-  // Full ranking (optional) — places 5+ ordered by matchups won,
+  // Full ranking (optional) - places 5+ ordered by matchups won,
   // with shared placings noted as ties.
   // ============================================================
   function ordinal(n) {
@@ -1182,7 +1182,7 @@ if (typeof window !== 'undefined') {
 
     const cap = document.createElement('p');
     cap.className = 'fr-caption';
-    cap.textContent = 'Places 1–4 are your exact result. The rest are ranked by matchups won — ' +
+    cap.textContent = 'Places 1–4 are your exact result. The rest are ranked by matchups won; ' +
       'films that were only compared a few times often share a place.';
     elFullRanking.appendChild(cap);
 
@@ -1316,7 +1316,7 @@ if (typeof window !== 'undefined') {
   // ---- Show results (owner and shared modes) ----
   function showResults() {
     const ranking = engine.getRanking();
-    // Clear safely (no untrusted HTML — only our own structural empty state)
+    // Clear safely (no untrusted HTML - only our own structural empty state)
     while (elResultsList.firstChild) elResultsList.removeChild(elResultsList.firstChild);
 
     ranking.forEach((film, i) => {
@@ -1468,12 +1468,12 @@ if (typeof window !== 'undefined') {
     showMatchup();
   }
 
-  // ---- "Start over" — same films, fresh tournament ----
+  // ---- "Start over" - same films, fresh tournament ----
   function startOver() {
     startTournament();
   }
 
-  // ---- "Use a different file" / "Reset" — clear everything ----
+  // ---- "Use a different file" / "Reset" - clear everything ----
   function useDifferentFile() {
     // Guard against wiping an in-progress tournament by accident.
     if (engine && !engine.isComplete() &&
@@ -1607,7 +1607,7 @@ if (typeof window !== 'undefined') {
     document.getElementById('btn-restart-results').addEventListener('click', startOver);
     document.getElementById('btn-different-file').addEventListener('click', useDifferentFile);
 
-    // "Make your own top four" — shown in shared mode, hidden in owner mode
+    // "Make your own top four" - shown in shared mode, hidden in owner mode
     document.getElementById('btn-make-own').addEventListener('click', () => {
       history.replaceState(null, '', location.pathname);
       sharedView = false;
@@ -1663,7 +1663,7 @@ if (typeof window !== 'undefined') {
       const expanded = elSharePanel.hidden === false;
       elSharePanel.hidden = expanded;
       elShareToggle.setAttribute('aria-expanded', String(!expanded));
-      if (!expanded) regenShareLink(); // opening — prepare the link up front
+      if (!expanded) regenShareLink(); // opening - prepare the link up front
     });
 
     // Regenerate when the nickname changes (not in a gesture, so awaiting is fine).
@@ -1685,7 +1685,7 @@ if (typeof window !== 'undefined') {
         flashCopyBtn(legacyCopy(shareLink) ? 'Copied!' : 'Press Ctrl/⌘+C');
         return;
       }
-      // Rare: link not ready yet — generate then copy (best effort).
+      // Rare: link not ready yet - generate then copy (best effort).
       regenShareLink().then(() => {
         if (navigator.clipboard && navigator.clipboard.writeText) {
           return navigator.clipboard.writeText(shareLink);
@@ -1712,9 +1712,9 @@ if (typeof window !== 'undefined') {
         try {
           const payload = await decodeShare(hash.slice(3));
           loadSharedPayload(payload);
-          return; // DO NOT touch localStorage — viewer’s own saved game is untouched
+          return; // DO NOT touch localStorage - viewer’s own saved game is untouched
         } catch (_) {
-          // Invalid/corrupt hash — fall through to normal flow
+          // Invalid/corrupt hash - fall through to normal flow
         }
       }
       // Normal resume path

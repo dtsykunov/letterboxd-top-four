@@ -100,7 +100,7 @@ if (fs.existsSync(csvPath)) {
 }
 
 // ============================================================
-// 3. Tournament engine — correctness across pool sizes
+// 3. Tournament engine - correctness across pool sizes
 // ============================================================
 console.log('\n--- Tournament engine ---');
 
@@ -160,7 +160,7 @@ for (const n of testSizes) {
 // ============================================================
 console.log('\n--- Edge cases ---');
 
-// 1 film — immediately done, ranked
+// 1 film - immediately done, ranked
 {
   const e = new TournamentEngine([{ name: 'Solo', year: '2000', uri: 'https://boxd.it/x' }]);
   assert(e.isComplete(), '1 film: engine immediately complete');
@@ -168,7 +168,7 @@ console.log('\n--- Edge cases ---');
   assertEqual(e.state.comparisonCount, 0, '1 film: 0 comparisons');
 }
 
-// 2 films — exactly 1 comparison needed
+// 2 films - exactly 1 comparison needed
 {
   const e = simulateTournament(2);
   assert(e.isComplete(), '2 films: engine complete');
@@ -176,7 +176,7 @@ console.log('\n--- Edge cases ---');
   assertEqual(e.state.comparisonCount, 1, '2 films: exactly 1 comparison');
 }
 
-// 3 films — 2 ranked; need 3 comparisons (main:2, repechage:1)
+// 3 films - 2 ranked; need 3 comparisons (main:2, repechage:1)
 {
   const e = simulateTournament(3);
   assert(e.isComplete(), '3 films: engine complete');
@@ -365,7 +365,7 @@ for (const pattern of forbidden) {
   if (pattern.source === '\\bfetch\\s*\\(' && match) {
     // Check if it's actually a standalone fetch()
     const fetches = allSource.match(/\bfetch\s*\(/g) || [];
-    // Our code has no standalone fetch() calls — Response.text() uses Response constructor, not fetch()
+    // Our code has no standalone fetch() calls - Response.text() uses Response constructor, not fetch()
     assert(fetches.length === 0, `no standalone fetch() calls (found: ${fetches.join(', ')})`);
   } else {
     assert(!match, `no ${pattern} in source files`);
@@ -507,7 +507,7 @@ assert(!/<img/i.test(indexHtml.replace(/<svg[^]*?<\/svg>/g, '')), 'no <img> tags
   for (let i = 0; i < seqBuf.length; i++) seqBuf[i] = i & 0xff;
   roundTrip(seqBuf, 'sequential 0-255 x4 (1024 bytes)');
 
-  // Random-ish data (not truly random — deterministic for repeatability)
+  // Random-ish data (not truly random - deterministic for repeatability)
   const pseudoRandom = Buffer.alloc(2048);
   let seed = 12345;
   for (let i = 0; i < pseudoRandom.length; i++) {

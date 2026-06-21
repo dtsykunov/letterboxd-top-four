@@ -2,7 +2,7 @@
 
 > A free, private, in-browser tool to choose your four favorite films from your
 > Letterboxd history. You upload your Letterboxd data export, pick the film you
-> prefer in a series of head-to-head matchups, and get a ranked top 4 — ideal for
+> prefer in a series of head-to-head matchups, and get a ranked top 4, ideal for
 > filling in the "Favorite films" section of a Letterboxd profile.
 
 URL: https://dtsykunov.github.io/letterboxd-top-four/

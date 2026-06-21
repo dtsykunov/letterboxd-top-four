@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>Letterboxd Top Four — Pick Your 4 Favorite Films</title>
-  <meta name="description" content="Free, private browser tool to choose your four favorite Letterboxd films. Import your watched list and rank your top 4 through quick head-to-head matchups. Runs entirely in your browser — nothing is uploaded.">
+  <title>Letterboxd Top Four: Pick Your 4 Favorite Films</title>
+  <meta name="description" content="Free, private browser tool to choose your four favorite Letterboxd films. Import your watched list and rank your top 4 through quick head-to-head matchups. Runs entirely in your browser. Nothing is uploaded.">
   <meta name="keywords" content="letterboxd, letterboxd top 4, top four, favorite films, four favorites, letterboxd favorites picker, film ranking, movie tournament, rank movies, watched list">
   <meta name="author" content="dtsykunov">
   <meta name="robots" content="index, follow, max-image-preview:large">
@@ -19,18 +19,18 @@
   <!-- Open Graph -->
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Letterboxd Top Four">
-  <meta property="og:title" content="Letterboxd Top Four — Pick Your 4 Favorite Films">
+  <meta property="og:title" content="Letterboxd Top Four: Pick Your 4 Favorite Films">
   <meta property="og:description" content="Choose your four favorite Letterboxd films through quick head-to-head matchups. Free, private, and runs entirely in your browser.">
   <meta property="og:url" content="https://dtsykunov.github.io/letterboxd-top-four/">
   <meta property="og:image" content="https://dtsykunov.github.io/letterboxd-top-four/og-image.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="Letterboxd Top Four — pick your four favorite films">
+  <meta property="og:image:alt" content="Letterboxd Top Four: pick your four favorite films">
   <meta property="og:locale" content="en_US">
 
   <!-- Twitter -->
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Letterboxd Top Four — Pick Your 4 Favorite Films">
+  <meta name="twitter:title" content="Letterboxd Top Four: Pick Your 4 Favorite Films">
   <meta name="twitter:description" content="Choose your four favorite Letterboxd films through quick head-to-head matchups. Free, private, and runs entirely in your browser.">
   <meta name="twitter:image" content="https://dtsykunov.github.io/letterboxd-top-four/og-image.png">
 
@@ -103,17 +103,51 @@
       </p>
       <ol class="instructions">
         <li>Export your data from <a href="https://letterboxd.com/settings/data/" target="_blank" rel="noopener noreferrer">letterboxd.com/settings/data</a>.</li>
-        <li>Upload the downloaded <code>.zip</code> — or just the <code>watched.csv</code> inside it.</li>
+        <li>Upload the downloaded <code>.zip</code>, or just the <code>watched.csv</code> inside it.</li>
         <li>Pick the film you prefer in each head-to-head matchup.</li>
         <li>Get your ranked top 4.</li>
       </ol>
       <div class="intro-note">
         <p class="intro-note-title">How it works</p>
-        <p>You'll see two films at a time — just pick the one you like more. A single loss
+        <p>You'll see two films at a time. Just pick the one you like more. A single loss
         doesn't knock a film out: films you pass over can come back in later rounds (there's
         a losers bracket), so your final four are decided fairly rather than by one unlucky
         matchup.</p>
       </div>
+
+      <details class="explainer">
+        <summary>
+          <span>How are the four actually chosen?</span>
+          <span class="explainer-chevron" aria-hidden="true"></span>
+        </summary>
+        <div class="explainer-body">
+          <p class="explainer-intro">No need to rank hundreds of films by hand. A small
+          tournament finds your top four for you. Here's the idea, in plain terms.</p>
+          <ol class="explainer-steps">
+            <li>
+              <span class="explainer-step-title">Find #1 with a knockout.</span>
+              Films are shown two at a time, and you keep the one you like more. Winners move
+              on and play again, round after round, until one film has beaten everything in its
+              path. That's your favorite.
+            </li>
+            <li>
+              <span class="explainer-step-title">Give the runners-up a second chance.</span>
+              The only film standing between the rest and the #2 spot is your #1. So every film
+              whose single loss was to your favorite comes back and plays off. Whoever survives
+              takes second place.
+            </li>
+            <li>
+              <span class="explainer-step-title">Repeat for #3 and #4.</span>
+              Each remaining place is filled the same way: the films back in the running are
+              exactly those whose every defeat came against a film already in your top four. One
+              unlucky early matchup never knocks a film out for good.
+            </li>
+          </ol>
+          <p class="explainer-foot">That's why you make roughly as many picks as you have films,
+          not one for every possible pairing, and why a great film drawn into an early clash with
+          an eventual favorite still gets its due.</p>
+        </div>
+      </details>
 
       <p class="privacy-note">
         Everything happens in your browser. Your data never leaves this page.
@@ -247,7 +281,7 @@
             <label class="share-label" for="share-nickname">Your name (optional)</label>
             <input id="share-nickname" class="share-input" type="text" maxlength="40" placeholder="e.g. Letterbox Larry">
             <button id="btn-copy-link" class="btn-copy share-copy-btn">Copy share link</button>
-            <p id="share-length-warning" class="share-warning" hidden>Long link — works as a direct link, but some apps, SMS, or QR codes may truncate it.</p>
+            <p id="share-length-warning" class="share-warning" hidden>Long link. Works as a direct link, but some apps, SMS, or QR codes may truncate it.</p>
           </div>
         </div>
       </div>
@@ -258,6 +292,20 @@
       </div>
     </div>
   </section>
+
+  <!-- ======================================================
+       Site footer: source and attribution (persistent)
+  ======================================================= -->
+  <footer class="site-footer">
+    <a href="https://github.com/dtsykunov/letterboxd-top-four" target="_blank" rel="noopener noreferrer">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
+        <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/>
+      </svg>
+      View source on GitHub
+    </a>
+    <span class="footer-sep" aria-hidden="true">·</span>
+    <span>Runs entirely in your browser · Not affiliated with Letterboxd</span>
+  </footer>
 
   <script src="app.js"></script>
 </body>

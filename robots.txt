@@ -1,4 +1,4 @@
-# Letterboxd Top Four — all crawlers welcome, including AI assistants.
+# Letterboxd Top Four: all crawlers welcome, including AI assistants.
 User-agent: *
 Allow: /
 

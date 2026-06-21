@@ -1,5 +1,5 @@
 /* ============================================================
-   Self-hosted typeface — Hanken Grotesk (SIL OFL), no external
+   Self-hosted typeface - Hanken Grotesk (SIL OFL), no external
    requests at runtime. A clean grotesque close to Letterboxd's
    Graphik.
    ============================================================ */
@@ -30,7 +30,7 @@
 }
 
 /* ============================================================
-   Letterboxd palette — dark only, true to the brand.
+   Letterboxd palette - dark only, true to the brand.
    Charcoal-navy ground + the traffic-light accents.
    ============================================================ */
 :root {
@@ -44,7 +44,7 @@
   --text-muted:  #8ea3b0;
   --text-dim:    #5c6b76;
 
-  --green:       #00e054;   /* primary action — Letterboxd green */
+  --green:       #00e054;   /* primary action - Letterboxd green */
   --green-dark:  #00b344;
   --blue:        #40bcf4;   /* links */
   --blue-dark:   #2ba3da;
@@ -172,7 +172,7 @@ a:hover { color: var(--blue-dark); border-bottom-color: var(--blue-dark); }
 }
 
 /* ============================================================
-   Shared content box — centered composition
+   Shared content box - centered composition
    ============================================================ */
 .content-box {
   max-width: var(--max-w);
@@ -236,6 +236,101 @@ a:hover { color: var(--blue-dark); border-bottom-color: var(--blue-dark); }
   letter-spacing: 0.16em;
   color: var(--green) !important;
   margin-bottom: 0.4rem !important;
+}
+
+/* ---- Expandable explainer (intro) ---- */
+.explainer {
+  max-width: 32rem;
+  margin: 0 auto 2rem;
+  text-align: left;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.explainer summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.4rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text);
+  transition: color 0.15s var(--ease);
+}
+.explainer summary::-webkit-details-marker { display: none; }
+.explainer summary:hover { color: var(--green); }
+.explainer[open] summary { color: var(--green); }
+
+.explainer-chevron {
+  flex-shrink: 0;
+  width: 0.55rem; height: 0.55rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform 0.2s var(--ease);
+}
+.explainer[open] .explainer-chevron { transform: rotate(-135deg); }
+
+.explainer-body {
+  padding: 0 1.4rem 1.3rem;
+  animation: screen-in 0.3s var(--ease) both;
+}
+.explainer-intro {
+  font-size: 0.92rem;
+  color: var(--text-muted);
+  margin: 0 0 1.2rem;
+  line-height: 1.55;
+}
+.explainer-steps {
+  list-style: none;
+  counter-reset: estep;
+  margin: 0 0 1.2rem;
+  padding: 0;
+}
+.explainer-steps li {
+  counter-increment: estep;
+  position: relative;
+  padding: 0 0 1.1rem 2.7rem;
+  font-size: 0.92rem;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+.explainer-steps li:last-child { padding-bottom: 0; }
+.explainer-steps li::before {
+  content: counter(estep);
+  position: absolute;
+  left: 0; top: -0.1rem;
+  width: 1.75rem; height: 1.75rem;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--green);
+  border: 1.5px solid var(--green);
+  border-radius: 50%;
+}
+.explainer-step-title {
+  display: block;
+  color: var(--text);
+  font-weight: 700;
+  margin-bottom: 0.1rem;
+}
+.explainer-foot {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  margin: 0;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--border);
+  line-height: 1.55;
+}
+@media (prefers-reduced-motion: reduce) {
+  .explainer-body { animation: none; }
+  .explainer-chevron { transition: none; }
 }
 
 .privacy-note {
@@ -454,7 +549,7 @@ a:hover { color: var(--blue-dark); border-bottom-color: var(--blue-dark); }
   transition: border-color 0.18s var(--ease), transform 0.18s var(--ease),
               box-shadow 0.18s var(--ease), background 0.18s var(--ease);
 }
-/* Hover only on real pointers — avoids the sticky green highlight that
+/* Hover only on real pointers - avoids the sticky green highlight that
    lingers on touch devices after a tap (the card is reused for the next pair). */
 @media (hover: hover) {
   .card:hover {
@@ -881,3 +976,32 @@ kbd {
 .decision-loser { color: var(--text-dim); text-decoration: line-through; text-decoration-color: var(--text-dim); text-decoration-thickness: 1px; }
 .shared-cta { text-align: center; padding-top: 0.5rem; }
 .shared-cta-note { font-size: 0.78rem; color: var(--text-dim); margin: 0.85rem 0 0; }
+
+/* ============================================================
+   Site footer - source link & attribution (persistent)
+   ============================================================ */
+.site-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.9rem;
+  max-width: var(--max-w);
+  margin: 0 auto;
+  padding: 2rem 1.5rem 2.75rem;
+  border-top: 1px solid var(--border);
+  font-size: 0.8rem;
+  color: var(--text-dim);
+  text-align: center;
+}
+.site-footer a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--text-muted);
+  border-bottom: 0;
+  font-weight: 600;
+}
+.site-footer a:hover { color: var(--green); }
+.site-footer svg { display: block; }
+.footer-sep { opacity: 0.55; }
